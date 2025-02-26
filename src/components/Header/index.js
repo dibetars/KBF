@@ -25,7 +25,7 @@ function Header() {
               <MKBox
                 component="img"
                 src="/images/logo.png"
-                alt="Kwame Bofrot Foundation"
+                alt="The Kwame Bofrot Foundation"
                 height="50px"
                 sx={{
                   cursor: "pointer",

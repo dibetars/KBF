@@ -58,6 +58,9 @@ function HomePage() {
           <Container>
             <Grid container item xs={12} lg={7} mx="auto" textAlign="center">
               <Grid item xs={12}>
+                <MKTypography variant="h1" color="white" mb={3}>
+                  The Kwame Bofrot Foundation
+                </MKTypography>
                 <TypeAnimation
                   sequence={["Changing Lives,", 1000, "Impacting Generations"]}
                   wrapper="div"
