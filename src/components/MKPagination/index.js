@@ -51,6 +51,26 @@ const MKPagination = forwardRef(
             iconOnly
             circular
             ownerState={{ variant, active, paginationSize }}
+            sx={{
+              width: {
+                xs: '30px',
+                sm: '36px',
+                md: '40px',
+              },
+              height: {
+                xs: '30px',
+                sm: '36px',
+                md: '40px',
+              },
+              margin: {
+                xs: '0 2px',
+                sm: '0 4px',
+              },
+              fontSize: {
+                xs: '0.75rem',
+                sm: '0.875rem',
+              }
+            }}
           >
             {children}
           </MKPaginationItemRoot>
@@ -59,7 +79,25 @@ const MKPagination = forwardRef(
             display="flex"
             justifyContent={placementValue}
             alignItems="center"
-            sx={{ listStyle: "none" }}
+            sx={{ 
+              listStyle: "none",
+              flexWrap: "wrap",
+              gap: { 
+                xs: 1,
+                sm: 2 
+              },
+              padding: {
+                xs: '0.5rem',
+                sm: '1rem'   
+              },
+              width: "100%",
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              "&::-webkit-scrollbar": {
+                display: "none"
+              },
+              "-ms-overflow-style": "none"
+            }}
           >
             {children}
           </MKBox>

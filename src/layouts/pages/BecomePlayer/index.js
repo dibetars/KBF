@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Container from "@mui/material/Container";
@@ -43,7 +43,16 @@ function BecomePlayer() {
 
   const handlePaystackPopup = (access_code) => {
     const popup = new PaystackPop();
-    popup.resumeTransaction(access_code);
+    popup.resumeTransaction({
+      accessCode: access_code,
+      onSuccess: (transaction) => {
+        formik.resetForm();
+        // Handle success
+      },
+      onCancel: () => {
+        formik.resetForm();
+      }
+    });
   };
 
   const formik = useFormik({
@@ -125,13 +134,39 @@ function BecomePlayer() {
           <Container>
             <Grid container spacing={3} alignItems="center">
               <Grid item xs={12} md={6}>
-                <MKTypography variant="h1" color="white" mb={3}>
-                  Become a Player
-                </MKTypography>
-                <MKTypography variant="body1" color="white" mb={4}>
-                  Join our program and take your soccer career to the next level. Fill out the
-                  application form to get started on your journey.
-                </MKTypography>
+                <MKBox 
+                  sx={{
+                    padding: {
+                      xs: '2rem 1rem', // More padding on mobile
+                      sm: '2rem',      // Medium padding on tablet
+                      md: '0'          // Original spacing on desktop
+                    }
+                  }}
+                >
+                  <MKTypography variant="h1" color="white" mb={3}
+                    sx={{
+                      fontSize: {
+                        xs: '2.5rem',  // Smaller font on mobile
+                        sm: '3rem',    // Medium font on tablet
+                        md: '3.5rem'   // Original size on desktop
+                      }
+                    }}
+                  >
+                    Become a Player
+                  </MKTypography>
+                  <MKTypography variant="body1" color="white" mb={4}
+                    sx={{
+                      fontSize: {
+                        xs: '1rem',
+                        sm: '1.1rem',
+                        md: '1.25rem'
+                      }
+                    }}
+                  >
+                    Join our program and take your soccer career to the next level. Fill out the
+                    application form to get started on your journey.
+                  </MKTypography>
+                </MKBox>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Card sx={{ p: 3, backdropFilter: "saturate(200%) blur(30px)" }}>
