@@ -19,7 +19,13 @@ import PaystackPop from "@paystack/inline-js";
 const validationSchema = Yup.object().shape({
   fullName: Yup.string().required("Full name is required"),
   email: Yup.string().email("Invalid email").required("Email is required"),
-  DOB: Yup.string().required("Date of birth is required"),
+  DOB: Yup.string()
+    .required("Date of birth is required")
+    .test("DOB", "Date must be between 1990 and 2009", (value) => {
+      if (!value) return false;
+      const date = new Date(value);
+      return date >= new Date("1990-01-01") && date <= new Date("2009-12-31");
+    }),
   position: Yup.string().required("Position is required"),
   phonNumber: Yup.string().required("Phone number is required"),
   Channel: Yup.string().required("Please select how you heard about us"),
@@ -159,12 +165,16 @@ function BecomePlayer() {
                       <MKInput
                         fullWidth
                         type="date"
-                        label="Date of Birth"
+                        label=" "
                         name="DOB"
                         value={formik.values.DOB}
                         onChange={formik.handleChange}
                         error={formik.touched.DOB && Boolean(formik.errors.DOB)}
                         helperText={formik.touched.DOB && formik.errors.DOB}
+                        inputProps={{
+                          min: "1990-01-01",
+                          max: "2009-12-31",
+                        }}
                         required
                       />
                     </MKBox>

@@ -17,6 +17,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
+import PhoneInput from "components/PhoneInput";
 
 // Form validation schema
 const validationSchema = Yup.object().shape({
@@ -39,10 +40,18 @@ const validationSchema = Yup.object().shape({
 function BecomeSponsor() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const PRICE_PER_PLAYER = 30;
+  const PRICE_PER_PLAYER_USD = 30;
+  const USD_TO_GHS_RATE = 15.5;
 
   const calculateTotalPrice = (numberOfPlayers) => {
-    return numberOfPlayers * PRICE_PER_PLAYER;
+    return numberOfPlayers * PRICE_PER_PLAYER_USD;
+  };
+
+  const calculatePaystackAmount = (numberOfPlayers) => {
+    // Convert USD to GHS and then to pesewas
+    const amountUSD = calculateTotalPrice(numberOfPlayers);
+    const amountGHS = amountUSD * USD_TO_GHS_RATE;
+    return Math.round(amountGHS * 100); // Convert to pesewas and round to whole number
   };
 
   const handlePaystackPopup = (access_code) => {
@@ -64,10 +73,7 @@ function BecomeSponsor() {
         setIsSubmitting(true);
         setError(null);
 
-        // Calculate total amount based on number of players
-        const totalAmount = calculateTotalPrice(values.sponsorNumber);
-
-        // Submit form data to database with calculated amount
+        // Submit form data to database with amount in pesewas
         const response = await fetch(
           "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
           {
@@ -77,7 +83,7 @@ function BecomeSponsor() {
             },
             body: JSON.stringify({
               ...values,
-              amount: totalAmount, // Add calculated amount to the payload
+              sponsorNumber: calculatePaystackAmount(values.sponsorNumber), // Only send GHS amount in pesewas
             }),
           }
         );
@@ -89,7 +95,6 @@ function BecomeSponsor() {
         // Get the response with payment access code
         const data = await response.json();
         if (data.paymentKey.response.result.data.access_code) {
-          // Initialize Paystack popup with access code
           handlePaystackPopup(data.paymentKey.response.result.data.access_code);
         } else {
           throw new Error("Payment initialization failed");
@@ -164,13 +169,12 @@ function BecomeSponsor() {
                     />
                   </MKBox>
                   <MKBox mb={2}>
-                    <MKInput
+                    <PhoneInput
                       fullWidth
                       label="Phone Number"
                       name="phoneNumber"
                       value={formik.values.phoneNumber}
                       onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
                       error={formik.touched.phoneNumber && Boolean(formik.errors.phoneNumber)}
                       helperText={formik.touched.phoneNumber && formik.errors.phoneNumber}
                       required
@@ -213,7 +217,11 @@ function BecomeSponsor() {
                     <MKBox mb={3}>
                       <MKTypography variant="body2" color="text">
                         Total Sponsorship Amount: $
-                        {calculateTotalPrice(formik.values.sponsorNumber)}
+                        {calculateTotalPrice(formik.values.sponsorNumber)} USD (₵
+                        {(
+                          calculateTotalPrice(formik.values.sponsorNumber) * USD_TO_GHS_RATE
+                        ).toFixed(2)}{" "}
+                        GHS)
                       </MKTypography>
                     </MKBox>
                   )}
