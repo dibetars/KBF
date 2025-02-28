@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState} from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Container from "@mui/material/Container";
@@ -40,6 +40,7 @@ const validationSchema = Yup.object().shape({
 function BecomePlayer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [emailExists, setEmailExists] = useState(false);
 
   const handlePaystackPopup = (access_code) => {
     const popup = new PaystackPop();
@@ -47,12 +48,32 @@ function BecomePlayer() {
       accessCode: access_code,
       onSuccess: (transaction) => {
         formik.resetForm();
-        // Handle success
       },
       onCancel: () => {
         formik.resetForm();
       }
     });
+  };
+
+  const checkEmailExists = async (email) => {
+    try {
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/check_email",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const data = await response.json();
+      return !!data.email; // Returns true if email exists, false otherwise
+    } catch (err) {
+      console.error("Error checking email:", err);
+      return false;
+    }
   };
 
   const formik = useFormik({
@@ -72,6 +93,15 @@ function BecomePlayer() {
       try {
         setIsSubmitting(true);
         setError(null);
+
+        // Check if email exists before proceeding
+        const exists = await checkEmailExists(values.email);
+        if (exists) {
+          setEmailExists(true);
+          setError("This email is already registered. Please use a different email address.");
+          setIsSubmitting(false);
+          return;
+        }
 
         // Submit form data to database
         const response = await fetch(
@@ -103,10 +133,22 @@ function BecomePlayer() {
         }
       } catch (err) {
         setError(err.message);
+      } finally {
         setIsSubmitting(false);
       }
     },
   });
+
+  const handleEmailBlur = async (e) => {
+    const email = e.target.value;
+    if (email && formik.touched.email && !formik.errors.email) {
+      const exists = await checkEmailExists(email);
+      setEmailExists(exists);
+      if (exists) {
+        formik.setFieldError('email', 'This email is already registered');
+      }
+    }
+  };
 
   return (
     <>
@@ -191,8 +233,18 @@ function BecomePlayer() {
                         name="email"
                         value={formik.values.email}
                         onChange={formik.handleChange}
-                        error={formik.touched.email && Boolean(formik.errors.email)}
-                        helperText={formik.touched.email && formik.errors.email}
+                        onBlur={(e) => {
+                          formik.handleBlur(e);
+                          handleEmailBlur(e);
+                        }}
+                        error={
+                          (formik.touched.email && Boolean(formik.errors.email)) ||
+                          emailExists
+                        }
+                        helperText={
+                          (formik.touched.email && formik.errors.email) ||
+                          (emailExists && "This email is already registered")
+                        }
                         required
                       />
                     </MKBox>

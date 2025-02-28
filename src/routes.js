@@ -47,6 +47,8 @@ import AboutUs from "layouts/pages/landing-pages/about-us";
 import ContactUs from "layouts/pages/landing-pages/contact-us";
 import Author from "layouts/pages/landing-pages/author";
 import SignIn from "layouts/pages/authentication/sign-in";
+import Authentication from "layouts/pages/authentication";
+import Dashboard from "layouts/pages/Dashboard";
 
 // Sections
 import PageHeaders from "layouts/sections/page-sections/page-headers";
@@ -67,6 +69,7 @@ import Dropdowns from "layouts/sections/elements/dropdowns";
 import ProgressBars from "layouts/sections/elements/progress-bars";
 import Toggles from "layouts/sections/elements/toggles";
 import Typography from "layouts/sections/elements/typography";
+import ProtectedRoute from "components/ProtectedRoute";
 
 const routes = [
   {
@@ -264,6 +267,22 @@ const routes = [
       },
     ],
   },
+  {
+    name: "Auth",
+    route: "/auth",
+    component: <Authentication />,
+    icon: <Icon>lock</Icon>,
+  },
+  {
+    name: "Dashboard",
+    route: "/dashboard",
+    component: <ProtectedRoute><Dashboard /></ProtectedRoute>,
+    icon: <Icon>dashboard</Icon>,
+  },
+];
+
+// Create a separate array for external links that need event handlers
+export const externalLinks = [
   {
     name: "github",
     icon: <GitHubIcon />,
