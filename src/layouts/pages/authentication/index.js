@@ -20,18 +20,40 @@ function Authentication() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [fadeIn, setFadeIn] = useState(false);
 
   // Check if already authenticated
   useEffect(() => {
+    let mounted = true;
+
     const checkAuth = async () => {
-      const isAuth = localStorage.getItem("isAuthenticated");
-      if (isAuth === "true") {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for smooth transition
-        navigate("/dashboard");
+      try {
+        const isAuth = localStorage.getItem("isAuthenticated");
+        
+        // Add a minimum delay to prevent flash
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        if (!mounted) return;
+
+        if (isAuth === "true") {
+          navigate("/dashboard", { replace: true }); // Use replace to prevent back navigation
+        } else {
+          setFadeIn(true);
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+      } finally {
+        if (mounted) {
+          setIsChecking(false);
+        }
       }
-      setIsChecking(false);
     };
+
     checkAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -47,12 +69,13 @@ function Authentication() {
     setError("");
 
     try {
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       if (credentials.username === "levi" && credentials.password === "#r5439:2fgs") {
+        setFadeIn(false);
+        await new Promise(resolve => setTimeout(resolve, 300));
         localStorage.setItem("isAuthenticated", "true");
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       } else {
         setError("Invalid username or password");
       }
@@ -63,6 +86,7 @@ function Authentication() {
     }
   };
 
+  // Show loading state
   if (isChecking) {
     return (
       <MKBox
@@ -72,16 +96,25 @@ function Authentication() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "background.default",
+          backgroundColor: "#f8f9fa",
         }}
       >
-        <CircularProgress color="error" />
+        <CircularProgress 
+          color="error"
+          size={40}
+          thickness={4}
+        />
       </MKBox>
     );
   }
 
   return (
-    <Fade in={!isChecking} timeout={600}>
+    <Fade 
+      in={fadeIn} 
+      timeout={600}
+      mountOnEnter
+      unmountOnExit
+    >
       <MKBox>
         <Header />
         <MKBox
