@@ -21,6 +21,7 @@ import Grid from "@mui/material/Grid";
 import PeopleIcon from '@mui/icons-material/People';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import { useAuth } from 'context/AuthContext';
 
 function Dashboard() {
   const theme = useTheme();
@@ -32,6 +33,7 @@ function Dashboard() {
   const [sponsors, setSponsors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { logout } = useAuth();
 
   useEffect(() => {
     const authToken = localStorage.getItem("authToken");
@@ -236,8 +238,7 @@ function Dashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    navigate("/auth");
+    logout();
   };
 
   const calculateStats = () => {

@@ -16,6 +16,7 @@ import routes from "routes";
 import HomePage from "layouts/pages/HomePage";
 import BecomePlayer from "layouts/pages/BecomePlayer";
 import BecomeSponsor from "layouts/pages/BecomeSponsor";
+import { AuthProvider } from './context/AuthContext';
 
 export default function App() {
   const { pathname } = useLocation();
@@ -40,16 +41,18 @@ export default function App() {
     });
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Routes>
-        {getRoutes(routes)}
-        <Route path="/presentation" element={<Presentation />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/become-player" element={<BecomePlayer />} />
-        <Route path="/become-sponsor" element={<BecomeSponsor />} />
-        <Route path="*" element={<Navigate to="/home" />} />
-      </Routes>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Routes>
+          {getRoutes(routes)}
+          <Route path="/presentation" element={<Presentation />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/become-player" element={<BecomePlayer />} />
+          <Route path="/become-sponsor" element={<BecomeSponsor />} />
+          <Route path="*" element={<Navigate to="/home" />} />
+        </Routes>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

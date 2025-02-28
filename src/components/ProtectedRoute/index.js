@@ -1,25 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useAuth } from 'context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import MKBox from "components/MKBox";
 import CircularProgress from '@mui/material/CircularProgress';
 
 function ProtectedRoute({ children }) {
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      // Add a small delay to prevent flash
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const auth = localStorage.getItem("isAuthenticated") === "true";
-      setIsAuthenticated(auth);
-      setIsChecking(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  if (isChecking) {
+  if (isLoading) {
     return (
       <MKBox
         sx={{
@@ -31,11 +18,7 @@ function ProtectedRoute({ children }) {
           backgroundColor: "#f8f9fa",
         }}
       >
-        <CircularProgress 
-          color="error"
-          size={40}
-          thickness={4}
-        />
+        <CircularProgress color="error" size={40} thickness={4} />
       </MKBox>
     );
   }

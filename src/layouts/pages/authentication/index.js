@@ -10,8 +10,10 @@ import MKButton from "components/MKButton";
 import Header from "components/Header";
 import CircularProgress from '@mui/material/CircularProgress';
 import Fade from '@mui/material/Fade';
+import { useAuth } from 'context/AuthContext';
 
 function Authentication() {
+  const { login, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({
     username: "",
@@ -69,13 +71,8 @@ function Authentication() {
     setError("");
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       if (credentials.username === "levi" && credentials.password === "#r5439:2fgs") {
-        setFadeIn(false);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        localStorage.setItem("isAuthenticated", "true");
-        navigate("/dashboard", { replace: true });
+        login();
       } else {
         setError("Invalid username or password");
       }
@@ -86,8 +83,7 @@ function Authentication() {
     }
   };
 
-  // Show loading state
-  if (isChecking) {
+  if (authLoading) {
     return (
       <MKBox
         sx={{
@@ -99,11 +95,7 @@ function Authentication() {
           backgroundColor: "#f8f9fa",
         }}
       >
-        <CircularProgress 
-          color="error"
-          size={40}
-          thickness={4}
-        />
+        <CircularProgress color="error" size={40} thickness={4} />
       </MKBox>
     );
   }
