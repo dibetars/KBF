@@ -276,7 +276,7 @@ const routes = [
   {
     name: "Dashboard",
     route: "/dashboard",
-    component: <ProtectedRoute><Dashboard /></ProtectedRoute>,
+    component: <Dashboard />,
     icon: <Icon>dashboard</Icon>,
   },
 ];

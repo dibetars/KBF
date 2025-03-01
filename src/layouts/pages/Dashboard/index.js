@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import Container from "@mui/material/Container";
 import Card from "@mui/material/Card";
 import MKBox from "components/MKBox";
@@ -21,45 +20,38 @@ import Grid from "@mui/material/Grid";
 import PeopleIcon from '@mui/icons-material/People';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import { useAuth } from 'context/AuthContext';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 
 function Dashboard() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [players, setPlayers] = useState([]);
   const [sponsors, setSponsors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const { logout } = useAuth();
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    const authToken = localStorage.getItem("authToken");
-    if (!authToken) {
-      navigate("/auth");
-      return;
-    }
-
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
         // Fetch players
         const playersResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players",
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
         );
 
         // Fetch sponsors
         const sponsorsResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation"
         );
 
         if (!playersResponse.ok || !sponsorsResponse.ok) {
@@ -79,7 +71,7 @@ function Dashboard() {
     };
 
     fetchData();
-  }, [navigate]);
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -237,10 +229,6 @@ function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const calculateStats = () => {
     const playerCount = players.length;
     const sponsorCount = sponsors.length;
@@ -312,6 +300,99 @@ function Dashboard() {
     </Card>
   );
 
+  const handleRowClick = (rowData) => {
+    setSelectedRow(rowData);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRow(null);
+  };
+
+  const DetailModal = () => {
+    if (!selectedRow) return null;
+
+    const isPlayer = activeTab === 0;
+    const details = isPlayer ? [
+      { label: "Full Name", value: selectedRow.fullName },
+      { label: "Email", value: selectedRow.email },
+      { label: "Date of Birth", value: selectedRow.DOB },
+      { label: "Position", value: selectedRow.position },
+      { label: "Phone Number", value: selectedRow.phonNumber },
+      { label: "Channel", value: selectedRow.Channel },
+      { label: "Other Channel", value: selectedRow.otherChannel },
+      { label: "Education", value: selectedRow.education },
+      { label: "Shirt Size", value: selectedRow.shirtSize },
+      { label: "Payment Status", value: selectedRow.paymentReference ? "Paid" : "Pending" },
+      { label: "Registration Date", value: new Date(selectedRow.created_at).toLocaleDateString() },
+    ] : [
+      { label: "Full Name", value: selectedRow.fullName },
+      { label: "Email", value: selectedRow.email },
+      { label: "Phone Number", value: selectedRow.phoneNumber },
+      { label: "Amount", value: formatCurrency(selectedRow.sponsorNumber / 100) },
+      { label: "Payment Status", value: selectedRow.paymentReference ? "Paid" : "Pending" },
+      { label: "Registration Date", value: new Date(selectedRow.created_at).toLocaleDateString() },
+    ];
+
+    return (
+      <Dialog 
+        open={isModalOpen} 
+        onClose={handleCloseModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <MKBox display="flex" alignItems="center" justifyContent="space-between">
+            <MKBox display="flex" alignItems="center" gap={2}>
+              <Avatar 
+                sx={{ 
+                  bgcolor: isPlayer ? 'error.main' : 'primary.main',
+                  width: 56,
+                  height: 56
+                }}
+              >
+                {getInitials(selectedRow.fullName)}
+              </Avatar>
+              <MKBox>
+                <MKTypography variant="h6">{selectedRow.fullName}</MKTypography>
+                <MKTypography variant="caption" color="text.secondary">
+                  {isPlayer ? "Player Details" : "Sponsor Details"}
+                </MKTypography>
+              </MKBox>
+            </MKBox>
+            <IconButton onClick={handleCloseModal}>
+              <CloseIcon />
+            </IconButton>
+          </MKBox>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2}>
+            {details.map((detail) => (
+              detail.value && (
+                <Grid item xs={12} key={detail.label}>
+                  <MKBox>
+                    <MKTypography variant="caption" color="text.secondary">
+                      {detail.label}
+                    </MKTypography>
+                    <MKTypography variant="body1">
+                      {detail.value}
+                    </MKTypography>
+                  </MKBox>
+                </Grid>
+              )
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <MKButton onClick={handleCloseModal} color="error">
+            Close
+          </MKButton>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <>
       <Header />
@@ -339,14 +420,6 @@ function Dashboard() {
               >
                 Dashboard
               </MKTypography>
-              <MKButton
-                variant="outlined"
-                color="error"
-                onClick={handleLogout}
-                size={isMobile ? "small" : "medium"}
-              >
-                Logout
-              </MKButton>
             </MKBox>
             <Tabs 
               value={activeTab} 
@@ -418,6 +491,8 @@ function Dashboard() {
                   fontSize: isMobile ? '0.875rem' : '1rem',
                 }}
                 sx={customStyles.table}
+                onRowClick={(e) => handleRowClick(e.data)}
+                rowClassName={() => 'cursor-pointer'}
               >
                 <Column 
                   field="fullName" 
@@ -484,6 +559,8 @@ function Dashboard() {
                   fontSize: isMobile ? '0.875rem' : '1rem',
                 }}
                 sx={customStyles.table}
+                onRowClick={(e) => handleRowClick(e.data)}
+                rowClassName={() => 'cursor-pointer'}
               >
                 <Column 
                   field="fullName" 
@@ -530,8 +607,22 @@ function Dashboard() {
           </Card>
         </Container>
       </MKBox>
+      <DetailModal />
     </>
   );
 }
+
+const styles = `
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  .cursor-pointer:hover {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+`;
+
+const styleSheet = document.createElement("style");
+styleSheet.innerText = styles;
+document.head.appendChild(styleSheet);
 
 export default Dashboard; 
