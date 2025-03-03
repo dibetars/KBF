@@ -12,11 +12,17 @@ import SportsIcon from "@mui/icons-material/Sports";
 import { TypeAnimation } from "react-type-animation";
 import Header from "components/Header";
 import Footer from "components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Dialog from "@mui/material/Dialog";
+import Avatar from "@mui/material/Avatar";
+import CircularProgress from "@mui/material/CircularProgress";
+import SportsSoccerIcon from '@mui/icons-material/SportsSoccer';
+import { Link } from "react-router-dom";
 
 function HomePage() {
   const [videoOpen, setVideoOpen] = useState(false);
+  const [sponsoredPlayers, setSponsoredPlayers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleVideoOpen = () => setVideoOpen(true);
   const handleVideoClose = () => setVideoOpen(false);
@@ -38,6 +44,246 @@ function HomePage() {
       description: "Covering registration fees, travel expenses, and essential resources.",
     },
   ];
+
+  const getInitials = (name) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const response = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
+        );
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch players");
+        }
+
+        const data = await response.json();
+        // Filter only sponsored players
+        setSponsoredPlayers(data.filter(player => player.Sponsor));
+      } catch (error) {
+        console.error("Error fetching players:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlayers();
+  }, []);
+
+  const TacticalBoard = () => {
+    // Group players by position
+    const playersByPosition = {
+      GK: sponsoredPlayers.filter(p => p.position === "GK"),
+      CB: sponsoredPlayers.filter(p => p.position === "CB"),
+      FB: sponsoredPlayers.filter(p => p.position === "FB"),
+      CDM: sponsoredPlayers.filter(p => p.position === "CDM"),
+      CM: sponsoredPlayers.filter(p => p.position === "CM"),
+      CAM: sponsoredPlayers.filter(p => p.position === "CAM"),
+      W: sponsoredPlayers.filter(p => p.position === "W"),
+      ST: sponsoredPlayers.filter(p => p.position === "ST"),
+      CF: sponsoredPlayers.filter(p => p.position === "CF"),
+    };
+
+    const PlayerCard = ({ player }) => (
+      <MKBox
+        sx={{
+          position: 'relative',
+          width: { xs: 60, md: 80 },
+          height: { xs: 60, md: 80 },
+          margin: '0 auto',
+          cursor: 'pointer',
+          transition: 'transform 0.2s',
+          '&:hover': {
+            transform: 'scale(1.1)',
+          },
+        }}
+      >
+        <Avatar
+          src={player.image.url || ''}
+          alt={player.fullName}
+          sx={{
+            width: '100%',
+            height: '100%',
+            border: '2px solid white',
+            boxShadow: 2,
+            bgcolor: 'error.main',
+            fontSize: { xs: '1rem', md: '1.25rem' },
+          }}
+        >
+          {getInitials(player.fullName)}
+        </Avatar>
+        <MKBox
+          sx={{
+            position: 'absolute',
+            bottom: -20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: '#fff',
+            padding: '2px 8px',
+            borderRadius: '10px',
+            fontSize: { xs: '0.7rem', md: '0.8rem' },
+            whiteSpace: 'nowrap',
+            zIndex: 1,
+          }}
+        >
+          {player.fullName}
+          <MKTypography
+            variant="caption"
+            sx={{
+              display: 'block',
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: '0.6rem',
+            }}
+          >
+            {player.position}
+          </MKTypography>
+        </MKBox>
+      </MKBox>
+    );
+
+    return (
+      <MKBox
+        sx={{
+          background: 'linear-gradient(0deg, #2d5a27 0%, #348f2d 100%)',
+          borderRadius: '10px',
+          padding: 3,
+          margin: '40px 0',
+          position: 'relative',
+          minHeight: '400px',
+          border: '5px solid #fff',
+          boxShadow: 3,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Field Markings */}
+        <MKBox
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            '&::before': {
+              // Half Circle
+              content: '""',
+              position: 'absolute',
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '150px',
+              height: '75px',
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderRadius: '150px 150px 0 0',
+              borderBottom: 'none',
+            },
+          }}
+        >
+          {/* Penalty Area */}
+          <MKBox
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '60%',
+              height: '40%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderBottom: 'none',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                bottom: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '40%',
+                height: '50%',
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderBottom: 'none',
+              },
+            }}
+          />
+        </MKBox>
+
+        {/* Player Positions */}
+        <Grid container sx={{ height: '100%', position: 'relative', zIndex: 1 }}>
+          {/* Forwards (ST, CF) - Top Row */}
+          <Grid item xs={12} sx={{ height: '20%', display: 'flex', justifyContent: 'center' }}>
+            <Grid container spacing={2} justifyContent="center">
+              {[...playersByPosition.ST, ...playersByPosition.CF].map((player, index) => (
+                <Grid item xs={3} key={player.id} sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <PlayerCard player={player} />
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {/* Attacking Midfielders (CAM, W) */}
+          <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'center' }}>
+            <Grid container spacing={2} justifyContent="space-around">
+              {[...playersByPosition.CAM, ...playersByPosition.W].map((player, index) => (
+                <Grid item xs={3} key={player.id}>
+                  <PlayerCard player={player} />
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {/* Central Midfielders (CM, CDM) */}
+          <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'center' }}>
+            <Grid container spacing={2} justifyContent="space-around">
+              {[...playersByPosition.CM, ...playersByPosition.CDM].map((player, index) => (
+                <Grid item xs={3} key={player.id}>
+                  <PlayerCard player={player} />
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {/* Defenders (CB, FB) */}
+          <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'center' }}>
+            <Grid container spacing={2} justifyContent="space-around">
+              {[...playersByPosition.CB, ...playersByPosition.FB].map((player, index) => (
+                <Grid item xs={3} key={player.id}>
+                  <PlayerCard player={player} />
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {/* Goalkeeper (GK) - Bottom Row */}
+          <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            {playersByPosition.GK.map((player, index) => (
+              <Grid item xs={3} key={player.id} sx={{ display: 'flex', justifyContent: 'center' }}>
+                <PlayerCard player={player} />
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+
+        {isLoading && (
+          <MKBox
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 2,
+            }}
+          >
+            <CircularProgress sx={{ color: 'white' }} />
+          </MKBox>
+        )}
+      </MKBox>
+    );
+  };
 
   return (
     <>
@@ -87,7 +333,12 @@ function HomePage() {
                 Empowering Young Soccer Players in Africa.
               </MKTypography>
               <Grid container justifyContent="center" mt={3}>
-                <MKButton color="error" variant="contained">
+                <MKButton 
+                  component={Link}
+                  to="/become-sponsor"
+                  color="error" 
+                  variant="contained"
+                >
                   Discover More
                 </MKButton>
               </Grid>
@@ -201,7 +452,13 @@ function HomePage() {
                   realized. By sponsoring a player, you help cover essential costs like registration
                   fees, travel, and academic preparation.
                 </MKTypography>
-                <MKButton color="error" variant="contained" size="large">
+                <MKButton 
+                  component={Link}
+                  to="/become-sponsor"
+                  color="error" 
+                  variant="contained" 
+                  size="large"
+                >
                   Sponsor a Player
                 </MKButton>
               </Grid>
@@ -231,6 +488,17 @@ function HomePage() {
             </Grid>
           </Container>
         </MKBox>
+
+        {/* Tactical Board Section */}
+        <Container sx={{ py: 6 }}>
+          <MKTypography variant="h3" textAlign="center" mb={3}>
+            Featured Players
+          </MKTypography>
+          <MKTypography variant="body1" textAlign="center" color="text" mb={4}>
+            Meet our talented players who need your support.
+          </MKTypography>
+          <TacticalBoard />
+        </Container>
       </MKBox>
 
       {/* Video Dialog */}

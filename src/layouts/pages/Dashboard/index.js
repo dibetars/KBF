@@ -26,6 +26,10 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 
 function Dashboard() {
   const theme = useTheme();
@@ -38,6 +42,9 @@ function Dashboard() {
   const [error, setError] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [availableSponsors, setAvailableSponsors] = useState([]);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignmentError, setAssignmentError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -310,10 +317,78 @@ function Dashboard() {
     setSelectedRow(null);
   };
 
+  const calculateSponsorLimit = (sponsorNumber) => {
+    return Math.floor((sponsorNumber || 0) / 46500);
+  };
+
   const DetailModal = () => {
     if (!selectedRow) return null;
 
     const isPlayer = activeTab === 0;
+    
+    const getSponsoredPlayers = () => {
+      return players.filter(player => player.sponsorsID === selectedRow.id);
+    };
+
+    const getSponsorshipStatus = () => {
+      if (!selectedRow.paymentReference) return null;
+      const limit = calculateSponsorLimit(selectedRow.sponsorNumber);
+      const current = getSponsoredPlayers().length;
+      return {
+        limit,
+        current,
+        remaining: limit - current
+      };
+    };
+
+    const handleSponsorAssignment = async (sponsorId) => {
+      try {
+        if (sponsorId) {
+          const sponsor = sponsors.find(s => s.id === sponsorId);
+          const sponsoredCount = players.filter(p => p.sponsorsID === sponsorId).length;
+          const sponsorLimit = calculateSponsorLimit(sponsor.sponsorNumber);
+          
+          if (sponsoredCount >= sponsorLimit) {
+            setAssignmentError(`This sponsor has reached their limit of ${sponsorLimit} player${sponsorLimit !== 1 ? 's' : ''}`);
+            return;
+          }
+        }
+
+        setIsAssigning(true);
+        setAssignmentError("");
+
+        const response = await fetch(
+          `https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/assign/${selectedRow.id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              kbfoundation_sponsors_id: sponsorId
+            })
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to assign sponsor");
+        }
+
+        // Refresh the players data
+        const updatedPlayersResponse = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
+        );
+        const updatedPlayers = await updatedPlayersResponse.json();
+        setPlayers(updatedPlayers);
+
+      } catch (error) {
+        setAssignmentError("Failed to assign sponsor. Please try again.");
+        console.error("Error assigning sponsor:", error);
+      } finally {
+        setIsAssigning(false);
+      }
+    };
+
     const details = isPlayer ? [
       { label: "Full Name", value: selectedRow.fullName },
       { label: "Email", value: selectedRow.email },
@@ -345,15 +420,32 @@ function Dashboard() {
         <DialogTitle>
           <MKBox display="flex" alignItems="center" justifyContent="space-between">
             <MKBox display="flex" alignItems="center" gap={2}>
-              <Avatar 
-                sx={{ 
-                  bgcolor: isPlayer ? 'error.main' : 'primary.main',
-                  width: 56,
-                  height: 56
-                }}
-              >
-                {getInitials(selectedRow.fullName)}
-              </Avatar>
+              {selectedRow.image ? (
+                <Avatar 
+                  src={selectedRow.image.url}
+                  sx={{ 
+                    width: 56,
+                    height: 56,
+                    bgcolor: isPlayer ? 'error.main' : 'primary.main',
+                    '& img': {
+                      objectFit: 'cover',
+                      objectPosition: 'center top',
+                      width: '100%',
+                      height: '100%',
+                    }
+                  }}
+                />
+              ) : (
+                <Avatar 
+                  sx={{ 
+                    bgcolor: isPlayer ? 'error.main' : 'primary.main',
+                    width: 56,
+                    height: 56
+                  }}
+                >
+                  {getInitials(selectedRow.fullName)}
+                </Avatar>
+              )}
               <MKBox>
                 <MKTypography variant="h6">{selectedRow.fullName}</MKTypography>
                 <MKTypography variant="caption" color="text.secondary">
@@ -382,6 +474,133 @@ function Dashboard() {
                 </Grid>
               )
             ))}
+
+            {/* Sponsored Players Section for Sponsors */}
+            {!isPlayer && selectedRow.paymentReference && (
+              <Grid item xs={12}>
+                <MKBox mt={2}>
+                  <MKBox 
+                    display="flex" 
+                    justifyContent="space-between" 
+                    alignItems="center"
+                    mb={2}
+                  >
+                    <MKTypography variant="h6">
+                      Sponsored Players
+                    </MKTypography>
+                    {getSponsorshipStatus() && (
+                      <Chip
+                        label={`${getSponsorshipStatus().current}/${getSponsorshipStatus().limit} Players`}
+                        color={getSponsorshipStatus().remaining > 0 ? "success" : "default"}
+                        size="small"
+                      />
+                    )}
+                  </MKBox>
+                  {getSponsoredPlayers().length > 0 ? (
+                    <Grid container spacing={2}>
+                      {getSponsoredPlayers().map((player) => (
+                        <Grid item xs={12} key={player.id}>
+                          <Card sx={{ p: 2 }}>
+                            <MKBox display="flex" alignItems="center" gap={2}>
+                              {player.image ? (
+                                <Avatar 
+                                  src={player.image.url}
+                                  sx={{ 
+                                    width: 40,
+                                    height: 40,
+                                    bgcolor: 'error.main',
+                                    '& img': {
+                                      objectFit: 'cover',
+                                      objectPosition: 'center top',
+                                      width: '100%',
+                                      height: '100%',
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Avatar 
+                                  sx={{ 
+                                    bgcolor: 'error.main',
+                                    width: 40,
+                                    height: 40
+                                  }}
+                                >
+                                  {getInitials(player.fullName)}
+                                </Avatar>
+                              )}
+                              <MKBox>
+                                <MKTypography variant="body2" fontWeight="medium">
+                                  {player.fullName}
+                                </MKTypography>
+                                <MKTypography variant="caption" color="text.secondary">
+                                  {player.position}
+                                </MKTypography>
+                              </MKBox>
+                            </MKBox>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <MKBox 
+                      p={3} 
+                      bgcolor="grey.100" 
+                      borderRadius="lg"
+                      textAlign="center"
+                    >
+                      <MKTypography variant="body2" color="text.secondary">
+                        No players currently sponsored
+                      </MKTypography>
+                      {getSponsorshipStatus() && (
+                        <MKTypography variant="caption" color="text.secondary" display="block" mt={1}>
+                          Can sponsor up to {getSponsorshipStatus().limit} player{getSponsorshipStatus().limit !== 1 ? 's' : ''}
+                        </MKTypography>
+                      )}
+                    </MKBox>
+                  )}
+                </MKBox>
+              </Grid>
+            )}
+
+            {/* Sponsor Assignment Section for Players */}
+            {isPlayer && selectedRow.Sponsor && (
+              <Grid item xs={12}>
+                <FormControl fullWidth variant="standard" sx={{ mt: 2 }}>
+                  <InputLabel>Assign Sponsor</InputLabel>
+                  <Select
+                    value={selectedRow.sponsorsID || ''}
+                    onChange={(e) => handleSponsorAssignment(e.target.value)}
+                    disabled={isAssigning}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {sponsors
+                      .filter(s => s.paymentReference) // Only show paid sponsors
+                      .map((sponsor) => {
+                        const sponsoredCount = players.filter(p => p.sponsorsID === sponsor.id).length;
+                        const sponsorLimit = calculateSponsorLimit(sponsor.sponsorNumber);
+                        const isAtLimit = sponsoredCount >= sponsorLimit;
+                        
+                        return (
+                          <MenuItem 
+                            key={sponsor.id} 
+                            value={sponsor.id}
+                            disabled={isAtLimit}
+                          >
+                            {sponsor.fullName} ({sponsoredCount}/{sponsorLimit} players)
+                          </MenuItem>
+                        );
+                      })}
+                  </Select>
+                  {assignmentError && (
+                    <MKTypography variant="caption" color="error" sx={{ mt: 1 }}>
+                      {assignmentError}
+                    </MKTypography>
+                  )}
+                </FormControl>
+              </Grid>
+            )}
           </Grid>
         </DialogContent>
         <DialogActions>
