@@ -37,6 +37,22 @@ const validationSchema = Yup.object().shape({
   shirtSize: Yup.string().required("Shirt size is required"),
 });
 
+const POSITIONS = [
+  { value: "GK", label: "Goalkeeper (GK)" },
+  { value: "CB", label: "Center-Back (CB)" },
+  { value: "FB", label: "Full-Back (LB/RB)" },
+  { value: "WB", label: "Wing-Back (LWB/RWB)" },
+  { value: "SW", label: "Sweeper (SW)" },
+  { value: "CDM", label: "Defensive Midfielder (CDM)" },
+  { value: "CM", label: "Central Midfielder (CM)" },
+  { value: "CAM", label: "Attacking Midfielder (CAM)" },
+  { value: "WM", label: "Wide Midfielder (LM/RM)" },
+  { value: "W", label: "Winger (LW/RW)" },
+  { value: "ST", label: "Striker (ST)" },
+  { value: "CF", label: "Center Forward (CF)" },
+  { value: "SS", label: "Second Striker (SS)" },
+];
+
 function BecomePlayer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -44,15 +60,7 @@ function BecomePlayer() {
 
   const handlePaystackPopup = (access_code) => {
     const popup = new PaystackPop();
-    popup.resumeTransaction({
-      accessCode: access_code,
-      onSuccess: (transaction) => {
-        formik.resetForm();
-      },
-      onCancel: () => {
-        formik.resetForm();
-      }
-    });
+    popup.resumeTransaction(access_code);
   };
 
   const checkEmailExists = async (email) => {
@@ -266,16 +274,36 @@ function BecomePlayer() {
                       />
                     </MKBox>
                     <MKBox mb={2}>
-                      <MKInput
-                        fullWidth
-                        label="Position"
-                        name="position"
-                        value={formik.values.position}
-                        onChange={formik.handleChange}
-                        error={formik.touched.position && Boolean(formik.errors.position)}
-                        helperText={formik.touched.position && formik.errors.position}
-                        required
-                      />
+                      <FormControl fullWidth variant="standard">
+                        <InputLabel shrink>Position</InputLabel>
+                        <Select
+                          name="position"
+                          value={formik.values.position}
+                          onChange={formik.handleChange}
+                          error={formik.touched.position && Boolean(formik.errors.position)}
+                          displayEmpty
+                          sx={{
+                            height: "43px",
+                            "& .MuiSelect-select": {
+                              paddingTop: "12px",
+                            },
+                          }}
+                        >
+                          <MenuItem value="" disabled>
+                            Select your position
+                          </MenuItem>
+                          {POSITIONS.map((pos) => (
+                            <MenuItem key={pos.value} value={pos.value}>
+                              {pos.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {formik.touched.position && formik.errors.position && (
+                          <MKTypography variant="caption" color="error">
+                            {formik.errors.position}
+                          </MKTypography>
+                        )}
+                      </FormControl>
                     </MKBox>
                     <MKBox mb={2}>
                       <MKInput

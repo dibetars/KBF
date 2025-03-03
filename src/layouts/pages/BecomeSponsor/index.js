@@ -18,6 +18,9 @@ import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import PhoneInput from "components/PhoneInput";
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 // Form validation schema
 const validationSchema = Yup.object().shape({
@@ -26,7 +29,7 @@ const validationSchema = Yup.object().shape({
     .min(2, "Name is too short")
     .max(50, "Name is too long")
     .required("Full name is required"),
-  email: Yup.string().email("Invalid email address").required("Email is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
   phoneNumber: Yup.string()
     .matches(/^\+?[0-9]\d{1,14}$/, "Invalid phone number")
     .required("Phone number is required"),
@@ -40,6 +43,8 @@ const validationSchema = Yup.object().shape({
 function BecomeSponsor() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [emailExists, setEmailExists] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
   const PRICE_PER_PLAYER_USD = 30;
   const USD_TO_GHS_RATE = 15.5;
 
@@ -59,6 +64,27 @@ function BecomeSponsor() {
     popup.resumeTransaction(access_code);
   };
 
+  const checkEmailExists = async (email) => {
+    try {
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_sponsors/check",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const data = await response.json();
+      return !!data.email; // Returns true if email exists, false otherwise
+    } catch (err) {
+      console.error("Error checking email:", err);
+      return false;
+    }
+  };
+
   const formik = useFormik({
     initialValues: {
       fullName: "",
@@ -72,6 +98,15 @@ function BecomeSponsor() {
       try {
         setIsSubmitting(true);
         setError(null);
+
+        // Check if email exists before proceeding
+        const exists = await checkEmailExists(values.email);
+        if (exists) {
+          setEmailExists(true);
+          setError("This email is already registered as a sponsor. Please use a different email address.");
+          setIsSubmitting(false);
+          return;
+        }
 
         // Submit form data to database with amount in pesewas
         const response = await fetch(
@@ -106,8 +141,60 @@ function BecomeSponsor() {
     },
   });
 
+  const handleEmailBlur = async (e) => {
+    const email = e.target.value;
+    if (email && formik.touched.email && !formik.errors.email) {
+      const exists = await checkEmailExists(email);
+      setEmailExists(exists);
+      if (exists) {
+        formik.setFieldError('email', 'This email is already registered as a sponsor');
+      }
+    }
+  };
+
   // Generate array of numbers 1-10 for select options
   const playerOptions = Array.from({ length: 10 }, (_, i) => i + 1);
+
+  const ThankYouModal = () => (
+    <Dialog 
+      open={showThankYou} 
+      onClose={() => setShowThankYou(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogContent>
+        <MKBox 
+          display="flex" 
+          flexDirection="column" 
+          alignItems="center" 
+          textAlign="center" 
+          py={3}
+        >
+          <CheckCircleIcon 
+            sx={{ 
+              fontSize: 64, 
+              color: 'success.main',
+              mb: 2 
+            }} 
+          />
+          <MKTypography variant="h4" mb={2}>
+            Thank You for Your Sponsorship!
+          </MKTypography>
+          <MKTypography variant="body1" color="text.secondary" mb={3}>
+            Your generous support will help make a difference in young athletes' lives. 
+            We'll send you updates about your sponsored players via email.
+          </MKTypography>
+          <MKButton 
+            variant="contained" 
+            color="error" 
+            onClick={() => setShowThankYou(false)}
+          >
+            Close
+          </MKButton>
+        </MKBox>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <>
@@ -162,9 +249,18 @@ function BecomeSponsor() {
                       name="email"
                       value={formik.values.email}
                       onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      error={formik.touched.email && Boolean(formik.errors.email)}
-                      helperText={formik.touched.email && formik.errors.email}
+                      onBlur={(e) => {
+                        formik.handleBlur(e);
+                        handleEmailBlur(e);
+                      }}
+                      error={
+                        (formik.touched.email && Boolean(formik.errors.email)) ||
+                        emailExists
+                      }
+                      helperText={
+                        (formik.touched.email && formik.errors.email) ||
+                        (emailExists && "This email is already registered as a sponsor")
+                      }
                       required
                     />
                   </MKBox>
@@ -278,6 +374,7 @@ function BecomeSponsor() {
           </Grid>
         </Container>
       </MKBox>
+      <ThankYouModal />
       <Footer />
     </>
   );
