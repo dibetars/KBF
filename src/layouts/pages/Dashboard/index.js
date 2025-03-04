@@ -110,16 +110,30 @@ function Dashboard() {
   };
 
   const statusBodyTemplate = (rowData) => {
+    let status;
+    let color;
+
+    if (activeTab === 0) { // For Players
+      if (rowData.sponsorsID) {
+        status = "Sponsored";
+        color = "success";
+      } else if (rowData.paymentReference) {
+        status = "Paid";
+        color = "info";
+      } else {
+        status = "Pending";
+        color = "warning";
+      }
+    } else { // For Sponsors
+      status = rowData.paymentReference ? "Paid" : "Pending";
+      color = rowData.paymentReference ? "success" : "warning";
+    }
+
     return (
-      <Chip
-        label={rowData.paymentReference ? "Paid" : "Pending"}
-        color={getStatusColor(rowData.paymentReference)}
+      <Chip 
+        label={status}
+        color={color}
         size="small"
-        sx={{
-          borderRadius: '16px',
-          fontSize: '0.75rem',
-          fontWeight: 600
-        }}
       />
     );
   };
@@ -399,14 +413,17 @@ function Dashboard() {
       { label: "Other Channel", value: selectedRow.otherChannel },
       { label: "Education", value: selectedRow.education },
       { label: "Shirt Size", value: selectedRow.shirtSize },
-      { label: "Payment Status", value: selectedRow.paymentReference ? "Paid" : "Pending" },
+      { 
+        label: "Status", 
+        value: selectedRow.sponsorsID ? "Sponsored" : (selectedRow.paymentReference ? "Paid" : "Pending")
+      },
       { label: "Registration Date", value: new Date(selectedRow.created_at).toLocaleDateString() },
     ] : [
       { label: "Full Name", value: selectedRow.fullName },
       { label: "Email", value: selectedRow.email },
       { label: "Phone Number", value: selectedRow.phoneNumber },
       { label: "Amount", value: formatCurrency(selectedRow.sponsorNumber / 100) },
-      { label: "Payment Status", value: selectedRow.paymentReference ? "Paid" : "Pending" },
+      { label: "Status", value: selectedRow.paymentReference ? "Paid" : "Pending" },
       { label: "Registration Date", value: new Date(selectedRow.created_at).toLocaleDateString() },
     ];
 

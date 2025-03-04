@@ -16,16 +16,32 @@ import { useState, useEffect } from "react";
 import Dialog from "@mui/material/Dialog";
 import Avatar from "@mui/material/Avatar";
 import CircularProgress from "@mui/material/CircularProgress";
-import SportsSoccerIcon from '@mui/icons-material/SportsSoccer';
 import { Link } from "react-router-dom";
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 
 function HomePage() {
   const [videoOpen, setVideoOpen] = useState(false);
   const [sponsoredPlayers, setSponsoredPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleVideoOpen = () => setVideoOpen(true);
   const handleVideoClose = () => setVideoOpen(false);
+
+  const handlePlayerClick = (player) => {
+    setSelectedPlayer(player);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedPlayer(null);
+  };
 
   const solutions = [
     {
@@ -93,6 +109,7 @@ function HomePage() {
 
     const PlayerCard = ({ player }) => (
       <MKBox
+        onClick={() => handlePlayerClick(player)}
         sx={{
           position: 'relative',
           width: { xs: 60, md: 80 },
@@ -282,6 +299,83 @@ function HomePage() {
           </MKBox>
         )}
       </MKBox>
+    );
+  };
+
+  const PlayerDetailModal = () => {
+    if (!selectedPlayer) return null;
+
+    const details = [
+      { label: "Full Name", value: selectedPlayer.fullName },
+      { label: "Position", value: selectedPlayer.position },
+      { label: "Date of Birth", value: selectedPlayer.DOB },
+      { label: "Education", value: selectedPlayer.education },
+      { label: "Shirt Size", value: selectedPlayer.shirtSize },
+      { label: "Registration Date", value: new Date(selectedPlayer.created_at).toLocaleDateString() },
+    ];
+
+    return (
+      <Dialog 
+        open={isModalOpen} 
+        onClose={handleCloseModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <MKBox display="flex" alignItems="center" justifyContent="space-between">
+            <MKBox display="flex" alignItems="center" gap={2}>
+              <Avatar 
+                src={selectedPlayer.image?.url}
+                sx={{ 
+                  width: 56,
+                  height: 56,
+                  bgcolor: 'error.main',
+                  '& img': {
+                    objectFit: 'cover',
+                    objectPosition: 'center top',
+                    width: '100%',
+                    height: '100%',
+                  }
+                }}
+              >
+                {!selectedPlayer.image && getInitials(selectedPlayer.fullName)}
+              </Avatar>
+              <MKBox>
+                <MKTypography variant="h6">{selectedPlayer.fullName}</MKTypography>
+                <MKTypography variant="caption" color="text.secondary">
+                  {selectedPlayer.position}
+                </MKTypography>
+              </MKBox>
+            </MKBox>
+            <IconButton onClick={handleCloseModal}>
+              <CloseIcon />
+            </IconButton>
+          </MKBox>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2}>
+            {details.map((detail) => (
+              detail.value && (
+                <Grid item xs={12} key={detail.label}>
+                  <MKBox>
+                    <MKTypography variant="caption" color="text.secondary">
+                      {detail.label}
+                    </MKTypography>
+                    <MKTypography variant="body1">
+                      {detail.value}
+                    </MKTypography>
+                  </MKBox>
+                </Grid>
+              )
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <MKButton onClick={handleCloseModal} color="error">
+            Close
+          </MKButton>
+        </DialogActions>
+      </Dialog>
     );
   };
 
@@ -526,6 +620,7 @@ function HomePage() {
         />
       </Dialog>
 
+      <PlayerDetailModal />
       <Footer />
     </>
   );
