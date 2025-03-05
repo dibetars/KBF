@@ -113,20 +113,15 @@ function Dashboard() {
     let status;
     let color;
 
-    if (activeTab === 0) { // For Players
-      if (rowData.sponsorsID) {
-        status = "Sponsored";
-        color = "success";
-      } else if (rowData.paymentReference) {
-        status = "Paid";
-        color = "info";
-      } else {
-        status = "Pending";
-        color = "warning";
-      }
-    } else { // For Sponsors
+    if (activeTab === 0) { // Unsponsored Players
+      status = rowData.paymentReference ? "Paid" : "Pending";
+      color = rowData.paymentReference ? "info" : "warning";
+    } else if (activeTab === 1) { // Sponsors
       status = rowData.paymentReference ? "Paid" : "Pending";
       color = rowData.paymentReference ? "success" : "warning";
+    } else { // Team (Sponsored Players)
+      status = rowData.sponsorsID ? "Sponsored" : "Available";
+      color = rowData.sponsorsID ? "success" : "info";
     }
 
     return (
@@ -338,7 +333,8 @@ function Dashboard() {
   const DetailModal = () => {
     if (!selectedRow) return null;
 
-    const isPlayer = activeTab === 0;
+    const isPlayer = activeTab === 0 || activeTab === 2;
+    const isTeamMember = activeTab === 2;
     
     const getSponsoredPlayers = () => {
       return players.filter(player => player.sponsorsID === selectedRow.id);
@@ -579,8 +575,8 @@ function Dashboard() {
               </Grid>
             )}
 
-            {/* Sponsor Assignment Section for Players */}
-            {isPlayer && selectedRow.Sponsor && (
+            {/* Only show sponsor assignment for Team tab */}
+            {isTeamMember && !selectedRow.sponsorsID && (
               <Grid item xs={12}>
                 <FormControl fullWidth variant="standard" sx={{ mt: 2 }}>
                   <InputLabel>Assign Sponsor</InputLabel>
@@ -665,6 +661,7 @@ function Dashboard() {
             >
               <Tab label="Players" />
               <Tab label="Sponsors" />
+              <Tab label="Team" />
             </Tabs>
           </MKBox>
 
@@ -714,7 +711,7 @@ function Dashboard() {
               </MKBox>
             ) : activeTab === 0 ? (
               <DataTable 
-                value={players} 
+                value={players.filter(player => !player.Sponsor)} 
                 paginator 
                 rows={isMobile ? 5 : 10}
                 filterDisplay={isMobile ? "menu" : "row"}
@@ -735,7 +732,7 @@ function Dashboard() {
                   header="Player" 
                   body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
                   sortable 
-                  filter={!isMobile}
+                  filter
                   filterPlaceholder="Search by name"
                   style={{ minWidth: isMobile ? '200px' : '300px' }}
                 />
@@ -744,17 +741,8 @@ function Dashboard() {
                     field="position" 
                     header="Position" 
                     sortable 
-                    filter
-                    filterPlaceholder="Search position"
                   />
                 )}
-                <Column 
-                  field="amount" 
-                  header="Amount" 
-                  body={playerAmountTemplate}
-                  sortable
-                  style={{ width: '150px' }}
-                />
                 <Column 
                   field="paymentReference" 
                   header="Status" 
@@ -767,8 +755,6 @@ function Dashboard() {
                     field="Channel" 
                     header="Channel" 
                     sortable 
-                    filter
-                    filterPlaceholder="Search channel"
                   />
                 )}
                 {!isMobile && (
@@ -780,7 +766,7 @@ function Dashboard() {
                   />
                 )}
               </DataTable>
-            ) : (
+            ) : activeTab === 1 ? (
               <DataTable 
                 value={sponsors} 
                 paginator 
@@ -803,7 +789,7 @@ function Dashboard() {
                   header="Sponsor" 
                   body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
                   sortable 
-                  filter={!isMobile}
+                  filter
                   filterPlaceholder="Search by name"
                   style={{ minWidth: isMobile ? '200px' : '300px' }}
                 />
@@ -812,8 +798,6 @@ function Dashboard() {
                     field="phoneNumber" 
                     header="Phone Number" 
                     sortable 
-                    filter
-                    filterPlaceholder="Search phone"
                   />
                 )}
                 <Column 
@@ -830,6 +814,63 @@ function Dashboard() {
                   sortable
                   style={{ width: isMobile ? '100px' : '150px' }}
                 />
+                {!isMobile && (
+                  <Column 
+                    field="created_at" 
+                    header="Registration Date" 
+                    body={dateBodyTemplate}
+                    sortable
+                  />
+                )}
+              </DataTable>
+            ) : (
+              <DataTable 
+                value={players.filter(player => player.Sponsor)}
+                paginator 
+                rows={isMobile ? 5 : 10}
+                filterDisplay={isMobile ? "menu" : "row"}
+                stripedRows
+                responsiveLayout="stack"
+                breakpoint="960px"
+                emptyMessage="No players found."
+                className="custom-datatable"
+                style={{ 
+                  fontSize: isMobile ? '0.875rem' : '1rem',
+                }}
+                sx={customStyles.table}
+                onRowClick={(e) => handleRowClick(e.data)}
+                rowClassName={() => 'cursor-pointer'}
+              >
+                <Column 
+                  field="fullName" 
+                  header="Player" 
+                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
+                  sortable 
+                  filter
+                  filterPlaceholder="Search by name"
+                  style={{ minWidth: isMobile ? '200px' : '300px' }}
+                />
+                {!isMobile && (
+                  <Column 
+                    field="position" 
+                    header="Position" 
+                    sortable 
+                  />
+                )}
+                <Column 
+                  field="paymentReference" 
+                  header="Status" 
+                  body={statusBodyTemplate}
+                  sortable
+                  style={{ width: isMobile ? '100px' : '150px' }}
+                />
+                {!isTablet && (
+                  <Column 
+                    field="Channel" 
+                    header="Channel" 
+                    sortable 
+                  />
+                )}
                 {!isMobile && (
                   <Column 
                     field="created_at" 
