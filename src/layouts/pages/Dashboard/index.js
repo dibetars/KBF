@@ -30,6 +30,9 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import CircularProgress from "@mui/material/CircularProgress";
 
 function Dashboard() {
   const theme = useTheme();
@@ -45,12 +48,27 @@ function Dashboard() {
   const [availableSponsors, setAvailableSponsors] = useState([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignmentError, setAssignmentError] = useState("");
+  const [registrationStatus, setRegistrationStatus] = useState(false);
+  const [isStatusLoading, setIsStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
+        // Fetch registration status
+        const regStatusResponse = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbkregstat/603bee96-f7bc-45f2-ad62-7eba2d4ab90a"
+        );
+
+        if (!regStatusResponse.ok) {
+          throw new Error("Failed to fetch registration status");
+        }
+
+        const regStatusData = await regStatusResponse.json();
+        setRegistrationStatus(regStatusData.Status);
+
         // Fetch players
         const playersResponse = await fetch(
           "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
@@ -625,6 +643,39 @@ function Dashboard() {
     );
   };
 
+  const handleRegistrationToggle = async () => {
+    try {
+      setIsStatusLoading(true);
+      setStatusError("");
+
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbkregstat/603bee96-f7bc-45f2-ad62-7eba2d4ab90a",
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            Status: !registrationStatus
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update registration status");
+      }
+
+      const data = await response.json();
+      setRegistrationStatus(data.Status);
+
+    } catch (error) {
+      setStatusError("Failed to update registration status");
+      console.error("Error updating registration status:", error);
+    } finally {
+      setIsStatusLoading(false);
+    }
+  };
+
   return (
     <>
       <Header />
@@ -638,10 +689,16 @@ function Dashboard() {
       >
         <Container maxWidth="xl">
           <MKBox sx={customStyles.header} mb={3}>
-            <MKBox display="flex" justifyContent="space-between" alignItems="center">
+            <MKBox 
+              display="flex" 
+              justifyContent="space-between" 
+              alignItems="center"
+              flexDirection={{ xs: 'column', sm: 'row' }}
+              gap={2}
+            >
               <MKTypography 
                 variant={isMobile ? "h4" : "h3"} 
-                mb={2}
+                mb={{ xs: 1, sm: 2 }}
                 sx={{ 
                   fontSize: { 
                     xs: '1.5rem', 
@@ -652,6 +709,41 @@ function Dashboard() {
               >
                 Dashboard
               </MKTypography>
+              <MKBox 
+                display="flex" 
+                alignItems="center" 
+                gap={2}
+                sx={{
+                  backgroundColor: 'background.paper',
+                  padding: 2,
+                  borderRadius: 1,
+                  boxShadow: 1,
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={registrationStatus}
+                      onChange={handleRegistrationToggle}
+                      disabled={isStatusLoading}
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <MKTypography variant="button" fontWeight="regular">
+                      {registrationStatus ? "Registration Open" : "Registration Closed"}
+                    </MKTypography>
+                  }
+                />
+                {isStatusLoading && (
+                  <CircularProgress size={20} />
+                )}
+                {statusError && (
+                  <MKTypography variant="caption" color="error">
+                    {statusError}
+                  </MKTypography>
+                )}
+              </MKBox>
             </MKBox>
             <Tabs 
               value={activeTab} 

@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Container from "@mui/material/Container";
@@ -15,6 +15,8 @@ import InputLabel from "@mui/material/InputLabel";
 import Header from "components/Header";
 import Footer from "components/Footer";
 import PaystackPop from "@paystack/inline-js";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const validationSchema = Yup.object().shape({
   fullName: Yup.string().required("Full name is required"),
@@ -57,6 +59,34 @@ function BecomePlayer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [emailExists, setEmailExists] = useState(false);
+  const [registrationStatus, setRegistrationStatus] = useState(true);
+  const [isStatusLoading, setIsStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState("");
+
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      try {
+        setIsStatusLoading(true);
+        const response = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbkregstat/603bee96-f7bc-45f2-ad62-7eba2d4ab90a"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to check registration status");
+        }
+
+        const data = await response.json();
+        setRegistrationStatus(data.Status);
+      } catch (error) {
+        setStatusError("Failed to check registration status");
+        console.error("Error checking registration status:", error);
+      } finally {
+        setIsStatusLoading(false);
+      }
+    };
+
+    checkRegistrationStatus();
+  }, []);
 
   const handlePaystackPopup = (access_code) => {
     const popup = new PaystackPop();
@@ -220,221 +250,251 @@ function BecomePlayer() {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Card sx={{ p: 3, backdropFilter: "saturate(200%) blur(30px)" }}>
-                  <form onSubmit={formik.handleSubmit}>
-                    <MKBox mb={2}>
-                      <MKInput
-                        fullWidth
-                        label="Full Name"
-                        name="fullName"
-                        value={formik.values.fullName}
-                        onChange={formik.handleChange}
-                        error={formik.touched.fullName && Boolean(formik.errors.fullName)}
-                        helperText={formik.touched.fullName && formik.errors.fullName}
-                        required
-                      />
+                  {isStatusLoading ? (
+                    <MKBox display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                      <CircularProgress />
                     </MKBox>
-                    <MKBox mb={2}>
-                      <MKInput
-                        fullWidth
-                        type="email"
-                        label="Email"
-                        name="email"
-                        value={formik.values.email}
-                        onChange={formik.handleChange}
-                        onBlur={(e) => {
-                          formik.handleBlur(e);
-                          handleEmailBlur(e);
-                        }}
-                        error={
-                          (formik.touched.email && Boolean(formik.errors.email)) ||
-                          emailExists
+                  ) : statusError ? (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                      {statusError}
+                    </Alert>
+                  ) : !registrationStatus ? (
+                    <Alert 
+                      severity="info" 
+                      sx={{ 
+                        mb: 3,
+                        '& .MuiAlert-message': {
+                          fontSize: '1rem',
+                          textAlign: 'center',
+                          width: '100%'
                         }
-                        helperText={
-                          (formik.touched.email && formik.errors.email) ||
-                          (emailExists && "This email is already registered")
-                        }
-                        required
-                      />
-                    </MKBox>
-                    <MKBox mb={2}>
-                      <MKInput
-                        fullWidth
-                        type="date"
-                        label=" "
-                        name="DOB"
-                        value={formik.values.DOB}
-                        onChange={formik.handleChange}
-                        error={formik.touched.DOB && Boolean(formik.errors.DOB)}
-                        helperText={formik.touched.DOB && formik.errors.DOB}
-                        inputProps={{
-                          min: "1990-01-01",
-                          max: "2009-12-31",
-                        }}
-                        required
-                      />
-                    </MKBox>
-                    <MKBox mb={2}>
-                      <FormControl fullWidth variant="standard">
-                        <InputLabel shrink>Position</InputLabel>
-                        <Select
-                          name="position"
-                          value={formik.values.position}
-                          onChange={formik.handleChange}
-                          error={formik.touched.position && Boolean(formik.errors.position)}
-                          displayEmpty
-                          sx={{
-                            height: "43px",
-                            "& .MuiSelect-select": {
-                              paddingTop: "12px",
-                            },
-                          }}
-                        >
-                          <MenuItem value="" disabled>
-                            Select your position
-                          </MenuItem>
-                          {POSITIONS.map((pos) => (
-                            <MenuItem key={pos.value} value={pos.value}>
-                              {pos.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {formik.touched.position && formik.errors.position && (
-                          <MKTypography variant="caption" color="error">
-                            {formik.errors.position}
-                          </MKTypography>
-                        )}
-                      </FormControl>
-                    </MKBox>
-                    <MKBox mb={2}>
-                      <MKInput
-                        fullWidth
-                        label="Phone Number"
-                        name="phonNumber"
-                        value={formik.values.phonNumber}
-                        onChange={formik.handleChange}
-                        error={formik.touched.phonNumber && Boolean(formik.errors.phonNumber)}
-                        helperText={formik.touched.phonNumber && formik.errors.phonNumber}
-                        required
-                      />
-                    </MKBox>
-                    <MKBox mb={2}>
-                      <FormControl fullWidth variant="standard">
-                        <InputLabel shrink>How did you hear about us?</InputLabel>
-                        <Select
-                          name="Channel"
-                          value={formik.values.Channel}
-                          onChange={formik.handleChange}
-                          error={formik.touched.Channel && Boolean(formik.errors.Channel)}
-                          displayEmpty
-                          sx={{
-                            height: "43px",
-                            "& .MuiSelect-select": {
-                              paddingTop: "12px",
-                            },
-                          }}
-                        >
-                          <MenuItem value="" disabled>
-                            Select an option
-                          </MenuItem>
-                          <MenuItem value="Social Media">Social Media</MenuItem>
-                          <MenuItem value="A Coach">A Coach</MenuItem>
-                          <MenuItem value="Other">Other</MenuItem>
-                        </Select>
-                        {formik.touched.Channel && formik.errors.Channel && (
-                          <MKTypography variant="caption" color="error">
-                            {formik.errors.Channel}
-                          </MKTypography>
-                        )}
-                      </FormControl>
-                    </MKBox>
-                    {formik.values.Channel === "Other" && (
+                      }}
+                    >
+                      <MKTypography variant="h6" mb={1}>
+                        Registration is Currently Closed
+                      </MKTypography>
+                      <MKTypography variant="body2">
+                        Thank you for your interest. Player registration is currently closed. 
+                        Please check back later or contact us for more information.
+                      </MKTypography>
+                    </Alert>
+                  ) : (
+                    <form onSubmit={formik.handleSubmit}>
                       <MKBox mb={2}>
                         <MKInput
                           fullWidth
-                          label="Please specify"
-                          name="otherChannel"
-                          value={formik.values.otherChannel}
+                          label="Full Name"
+                          name="fullName"
+                          value={formik.values.fullName}
                           onChange={formik.handleChange}
-                          error={formik.touched.otherChannel && Boolean(formik.errors.otherChannel)}
-                          helperText={formik.touched.otherChannel && formik.errors.otherChannel}
+                          error={formik.touched.fullName && Boolean(formik.errors.fullName)}
+                          helperText={formik.touched.fullName && formik.errors.fullName}
+                          required
                         />
                       </MKBox>
-                    )}
-                    <MKBox mb={2}>
-                      <FormControl fullWidth variant="standard">
-                        <InputLabel shrink>Education Level</InputLabel>
-                        <Select
-                          name="education"
-                          value={formik.values.education}
+                      <MKBox mb={2}>
+                        <MKInput
+                          fullWidth
+                          type="email"
+                          label="Email"
+                          name="email"
+                          value={formik.values.email}
                           onChange={formik.handleChange}
-                          error={formik.touched.education && Boolean(formik.errors.education)}
-                          displayEmpty
-                          sx={{
-                            height: "43px",
-                            "& .MuiSelect-select": {
-                              paddingTop: "12px",
-                            },
+                          onBlur={(e) => {
+                            formik.handleBlur(e);
+                            handleEmailBlur(e);
                           }}
-                        >
-                          <MenuItem value="" disabled>
-                            Select your education level
-                          </MenuItem>
-                          <MenuItem value="Wrote WASSCE">Wrote WASSCE</MenuItem>
-                          <MenuItem value="Currently in SHS">Currently in SHS</MenuItem>
-                          <MenuItem value="Completed SHS">Completed SHS</MenuItem>
-                        </Select>
-                        {formik.touched.education && formik.errors.education && (
-                          <MKTypography variant="caption" color="error">
-                            {formik.errors.education}
-                          </MKTypography>
-                        )}
-                      </FormControl>
-                    </MKBox>
-                    <MKBox mb={2}>
-                      <FormControl fullWidth variant="standard">
-                        <InputLabel shrink>Shirt Size</InputLabel>
-                        <Select
-                          name="shirtSize"
-                          value={formik.values.shirtSize}
+                          error={
+                            (formik.touched.email && Boolean(formik.errors.email)) ||
+                            emailExists
+                          }
+                          helperText={
+                            (formik.touched.email && formik.errors.email) ||
+                            (emailExists && "This email is already registered")
+                          }
+                          required
+                        />
+                      </MKBox>
+                      <MKBox mb={2}>
+                        <MKInput
+                          fullWidth
+                          type="date"
+                          label=" "
+                          name="DOB"
+                          value={formik.values.DOB}
                           onChange={formik.handleChange}
-                          error={formik.touched.shirtSize && Boolean(formik.errors.shirtSize)}
-                          displayEmpty
-                          sx={{
-                            height: "43px",
-                            "& .MuiSelect-select": {
-                              paddingTop: "12px",
-                            },
+                          error={formik.touched.DOB && Boolean(formik.errors.DOB)}
+                          helperText={formik.touched.DOB && formik.errors.DOB}
+                          inputProps={{
+                            min: "1990-01-01",
+                            max: "2009-12-31",
                           }}
-                        >
-                          <MenuItem value="" disabled>
-                            Select your shirt size
-                          </MenuItem>
-                          <MenuItem value="Small">Small</MenuItem>
-                          <MenuItem value="Medium">Medium</MenuItem>
-                          <MenuItem value="Large">Large</MenuItem>
-                        </Select>
-                        {formik.touched.shirtSize && formik.errors.shirtSize && (
-                          <MKTypography variant="caption" color="error">
-                            {formik.errors.shirtSize}
-                          </MKTypography>
-                        )}
-                      </FormControl>
-                    </MKBox>
-                    {error && (
-                      <MKTypography color="error" variant="caption" mb={2}>
-                        {error}
-                      </MKTypography>
-                    )}
-                    <MKButton
-                      type="submit"
-                      variant="contained"
-                      color="error"
-                      fullWidth
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Processing..." : "Submit Application"}
-                    </MKButton>
-                  </form>
+                          required
+                        />
+                      </MKBox>
+                      <MKBox mb={2}>
+                        <FormControl fullWidth variant="standard">
+                          <InputLabel shrink>Position</InputLabel>
+                          <Select
+                            name="position"
+                            value={formik.values.position}
+                            onChange={formik.handleChange}
+                            error={formik.touched.position && Boolean(formik.errors.position)}
+                            displayEmpty
+                            sx={{
+                              height: "43px",
+                              "& .MuiSelect-select": {
+                                paddingTop: "12px",
+                              },
+                            }}
+                          >
+                            <MenuItem value="" disabled>
+                              Select your position
+                            </MenuItem>
+                            {POSITIONS.map((pos) => (
+                              <MenuItem key={pos.value} value={pos.value}>
+                                {pos.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          {formik.touched.position && formik.errors.position && (
+                            <MKTypography variant="caption" color="error">
+                              {formik.errors.position}
+                            </MKTypography>
+                          )}
+                        </FormControl>
+                      </MKBox>
+                      <MKBox mb={2}>
+                        <MKInput
+                          fullWidth
+                          label="Phone Number"
+                          name="phonNumber"
+                          value={formik.values.phonNumber}
+                          onChange={formik.handleChange}
+                          error={formik.touched.phonNumber && Boolean(formik.errors.phonNumber)}
+                          helperText={formik.touched.phonNumber && formik.errors.phonNumber}
+                          required
+                        />
+                      </MKBox>
+                      <MKBox mb={2}>
+                        <FormControl fullWidth variant="standard">
+                          <InputLabel shrink>How did you hear about us?</InputLabel>
+                          <Select
+                            name="Channel"
+                            value={formik.values.Channel}
+                            onChange={formik.handleChange}
+                            error={formik.touched.Channel && Boolean(formik.errors.Channel)}
+                            displayEmpty
+                            sx={{
+                              height: "43px",
+                              "& .MuiSelect-select": {
+                                paddingTop: "12px",
+                              },
+                            }}
+                          >
+                            <MenuItem value="" disabled>
+                              Select an option
+                            </MenuItem>
+                            <MenuItem value="Social Media">Social Media</MenuItem>
+                            <MenuItem value="A Coach">A Coach</MenuItem>
+                            <MenuItem value="Other">Other</MenuItem>
+                          </Select>
+                          {formik.touched.Channel && formik.errors.Channel && (
+                            <MKTypography variant="caption" color="error">
+                              {formik.errors.Channel}
+                            </MKTypography>
+                          )}
+                        </FormControl>
+                      </MKBox>
+                      {formik.values.Channel === "Other" && (
+                        <MKBox mb={2}>
+                          <MKInput
+                            fullWidth
+                            label="Please specify"
+                            name="otherChannel"
+                            value={formik.values.otherChannel}
+                            onChange={formik.handleChange}
+                            error={formik.touched.otherChannel && Boolean(formik.errors.otherChannel)}
+                            helperText={formik.touched.otherChannel && formik.errors.otherChannel}
+                          />
+                        </MKBox>
+                      )}
+                      <MKBox mb={2}>
+                        <FormControl fullWidth variant="standard">
+                          <InputLabel shrink>Education Level</InputLabel>
+                          <Select
+                            name="education"
+                            value={formik.values.education}
+                            onChange={formik.handleChange}
+                            error={formik.touched.education && Boolean(formik.errors.education)}
+                            displayEmpty
+                            sx={{
+                              height: "43px",
+                              "& .MuiSelect-select": {
+                                paddingTop: "12px",
+                              },
+                            }}
+                          >
+                            <MenuItem value="" disabled>
+                              Select your education level
+                            </MenuItem>
+                            <MenuItem value="Wrote WASSCE">Wrote WASSCE</MenuItem>
+                            <MenuItem value="Currently in SHS">Currently in SHS</MenuItem>
+                            <MenuItem value="Completed SHS">Completed SHS</MenuItem>
+                          </Select>
+                          {formik.touched.education && formik.errors.education && (
+                            <MKTypography variant="caption" color="error">
+                              {formik.errors.education}
+                            </MKTypography>
+                          )}
+                        </FormControl>
+                      </MKBox>
+                      <MKBox mb={2}>
+                        <FormControl fullWidth variant="standard">
+                          <InputLabel shrink>Shirt Size</InputLabel>
+                          <Select
+                            name="shirtSize"
+                            value={formik.values.shirtSize}
+                            onChange={formik.handleChange}
+                            error={formik.touched.shirtSize && Boolean(formik.errors.shirtSize)}
+                            displayEmpty
+                            sx={{
+                              height: "43px",
+                              "& .MuiSelect-select": {
+                                paddingTop: "12px",
+                              },
+                            }}
+                          >
+                            <MenuItem value="" disabled>
+                              Select your shirt size
+                            </MenuItem>
+                            <MenuItem value="Small">Small</MenuItem>
+                            <MenuItem value="Medium">Medium</MenuItem>
+                            <MenuItem value="Large">Large</MenuItem>
+                          </Select>
+                          {formik.touched.shirtSize && formik.errors.shirtSize && (
+                            <MKTypography variant="caption" color="error">
+                              {formik.errors.shirtSize}
+                            </MKTypography>
+                          )}
+                        </FormControl>
+                      </MKBox>
+                      {error && (
+                        <MKTypography color="error" variant="caption" mb={2}>
+                          {error}
+                        </MKTypography>
+                      )}
+                      <MKButton
+                        type="submit"
+                        variant="contained"
+                        color="error"
+                        fullWidth
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Processing..." : "Submit Application"}
+                      </MKButton>
+                    </form>
+                  )}
                 </Card>
               </Grid>
             </Grid>
