@@ -17,7 +17,7 @@ function Footer() {
         <Grid container justifyContent="center">
           <Grid item>
             <MKTypography variant="button" color="white">
-              Kwame Bofrot Foundation © {new Date().getFullYear()}
+              Kwame Bofrot Foundation © {new Date().getFullYear()} | KB Foundation is a Christian organization dedicated to developing young talents through football.
             </MKTypography>
           </Grid>
         </Grid>
