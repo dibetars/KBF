@@ -16,6 +16,7 @@ import routes from "routes";
 import HomePage from "layouts/pages/HomePage";
 import BecomePlayer from "layouts/pages/BecomePlayer";
 import BecomeSponsor from "layouts/pages/BecomeSponsor";
+import SignupWithToken from "layouts/pages/SignupWithToken";
 import { AuthProvider } from './context/AuthContext';
 
 export default function App() {
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/become-player" element={<BecomePlayer />} />
           <Route path="/become-sponsor" element={<BecomeSponsor />} />
+          <Route path="/signup/:token" element={<SignupWithToken />} />
           <Route path="*" element={<Navigate to="/home" />} />
         </Routes>
       </ThemeProvider>

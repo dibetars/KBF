@@ -33,6 +33,11 @@ import MenuItem from "@mui/material/MenuItem";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import CircularProgress from "@mui/material/CircularProgress";
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import TextField from '@mui/material/TextField';
+import AddLinkIcon from '@mui/icons-material/AddLink';
 
 function Dashboard() {
   const theme = useTheme();
@@ -51,6 +56,13 @@ function Dashboard() {
   const [registrationStatus, setRegistrationStatus] = useState(false);
   const [isStatusLoading, setIsStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [signupLinkModalOpen, setSignupLinkModalOpen] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState("");
+  const [linkType, setLinkType] = useState("");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -676,6 +688,180 @@ function Dashboard() {
     }
   };
 
+  const handleGenerateLink = async () => {
+    try {
+      setIsGeneratingLink(true);
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:LfeuGUZr/generate-signup-link",
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: linkType
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate signup link");
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data); // Log the API response
+
+      // Get the link from the response data
+      const link = data.result1 || data.url || data.link;
+      console.log("Generated Link:", link); // Log the extracted link
+
+      if (!link) {
+        throw new Error("No link received from API");
+      }
+
+      // Set the full URL including the base URL if needed
+      const baseUrl = window.location.origin; // Get the current origin (e.g., http://localhost:3000)
+      const fullLink = link.startsWith('http') ? link : `${baseUrl}/signup/${link}`;
+      setGeneratedLink(fullLink);
+      
+      setSnackbarMessage("Link generated successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error("Error generating link:", error);
+      setSnackbarMessage("Failed to generate link. Please try again.");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(generatedLink).then(
+      () => {
+        setSnackbarMessage("Link copied to clipboard!");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
+      },
+      (err) => {
+        console.error("Failed to copy link:", err);
+        setSnackbarMessage("Failed to copy link");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+      }
+    );
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+  const handleOpenSignupLinkModal = () => {
+    setSignupLinkModalOpen(true);
+    setGeneratedLink("");
+    setLinkType("");
+  };
+
+  const handleCloseSignupLinkModal = () => {
+    setSignupLinkModalOpen(false);
+    setGeneratedLink("");
+    setLinkType("");
+  };
+
+  const SignupLinkModal = () => {
+    console.log("Modal Render - Generated Link:", generatedLink); // Debug log
+    
+    return (
+      <Dialog
+        open={signupLinkModalOpen}
+        onClose={handleCloseSignupLinkModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <MKBox display="flex" alignItems="center" justifyContent="space-between">
+            <MKTypography variant="h6">Generate Signup Link</MKTypography>
+            <IconButton onClick={handleCloseSignupLinkModal}>
+              <CloseIcon />
+            </IconButton>
+          </MKBox>
+        </DialogTitle>
+        <DialogContent dividers>
+          <MKBox mb={3}>
+            <FormControl fullWidth variant="standard">
+              <InputLabel>Link Type</InputLabel>
+              <Select
+                value={linkType}
+                onChange={(e) => setLinkType(e.target.value)}
+                disabled={isGeneratingLink}
+              >
+                <MenuItem value="player">Player</MenuItem>
+                <MenuItem value="sponsor">Sponsor</MenuItem>
+              </Select>
+            </FormControl>
+          </MKBox>
+          
+          {/* Debug information */}
+          <MKTypography variant="caption" color="text.secondary" mb={2}>
+            Status: {isGeneratingLink ? 'Generating...' : generatedLink ? 'Link Generated' : 'Waiting'}
+          </MKTypography>
+
+          {/* Always show the text field, but disable it when no link */}
+          <MKBox mt={3}>
+            <TextField
+              fullWidth
+              label="Generated Link"
+              value={generatedLink}
+              placeholder="Link will appear here after generation"
+              disabled={!generatedLink}
+              InputProps={{
+                readOnly: true,
+                endAdornment: generatedLink && (
+                  <IconButton onClick={handleCopyLink} edge="end" size="small">
+                    <ContentCopyIcon />
+                  </IconButton>
+                ),
+              }}
+            />
+            {generatedLink && (
+              <MKBox mt={2} display="flex" justifyContent="center">
+                <MKButton
+                  variant="contained"
+                  color="info"
+                  onClick={handleCopyLink}
+                  startIcon={<ContentCopyIcon />}
+                  fullWidth
+                >
+                  Copy to Clipboard
+                </MKButton>
+              </MKBox>
+            )}
+          </MKBox>
+        </DialogContent>
+        <DialogActions>
+          <MKButton onClick={handleCloseSignupLinkModal} color="error">
+            Cancel
+          </MKButton>
+          <MKButton
+            onClick={handleGenerateLink}
+            color="info"
+            disabled={!linkType || isGeneratingLink}
+          >
+            {isGeneratingLink ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              "Generate Link"
+            )}
+          </MKButton>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <>
       <Header />
@@ -720,6 +906,14 @@ function Dashboard() {
                   boxShadow: 1,
                 }}
               >
+                <MKButton
+                  variant="contained"
+                  color="info"
+                  startIcon={<AddLinkIcon />}
+                  onClick={handleOpenSignupLinkModal}
+                >
+                  Generate Signup Link
+                </MKButton>
                 <FormControlLabel
                   control={
                     <Switch
@@ -977,6 +1171,16 @@ function Dashboard() {
         </Container>
       </MKBox>
       <DetailModal />
+      <SignupLinkModal />
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 }
@@ -994,4 +1198,4 @@ const styleSheet = document.createElement("style");
 styleSheet.innerText = styles;
 document.head.appendChild(styleSheet);
 
-export default Dashboard; 
+export default Dashboard;
