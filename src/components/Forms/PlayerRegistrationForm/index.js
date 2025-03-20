@@ -97,7 +97,7 @@ function PlayerRegistrationForm({ token, linkId }) {
       );
 
       if (!markUsedResponse.ok) {
-        console.error("Failed to mark link as used");
+        // Continue despite failure to mark link as used
       }
 
       setSuccess(true);

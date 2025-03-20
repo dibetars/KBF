@@ -79,7 +79,7 @@ function BecomePlayer() {
         setRegistrationStatus(data.Status);
       } catch (error) {
         setStatusError("Failed to check registration status");
-        console.error("Error checking registration status:", error);
+        // Error occurred while checking registration status
       } finally {
         setIsStatusLoading(false);
       }
@@ -109,7 +109,7 @@ function BecomePlayer() {
       const data = await response.json();
       return !!data.email; // Returns true if email exists, false otherwise
     } catch (err) {
-      console.error("Error checking email:", err);
+      // Error occurred while checking email
       return false;
     }
   };

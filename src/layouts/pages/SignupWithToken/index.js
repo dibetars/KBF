@@ -97,10 +97,6 @@ function SignupWithToken() {
           throw new Error("This registration link has already been used");
         }
 
-        if (data.expiry && new Date(data.expiry) < new Date()) {
-          throw new Error("This registration link has expired");
-        }
-
         setTokenData(data);
       } catch (err) {
         setError(err.message || "An error occurred while verifying the link");
@@ -129,7 +125,6 @@ function SignupWithToken() {
       const data = await response.json();
       return !!data.email;
     } catch (err) {
-      console.error("Error checking email:", err);
       return false;
     }
   };
@@ -202,7 +197,7 @@ function SignupWithToken() {
         );
 
         if (!markUsedResponse.ok) {
-          console.error("Failed to mark token as used");
+          // Failed to mark token as used, but continue with registration success
         }
 
         // Redirect to success page

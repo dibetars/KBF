@@ -459,7 +459,6 @@ function Dashboard() {
 
       } catch (error) {
         setAssignmentError("Failed to assign sponsor. Please try again.");
-        console.error("Error assigning sponsor:", error);
       } finally {
         setIsAssigning(false);
       }
@@ -718,7 +717,6 @@ function Dashboard() {
 
     } catch (error) {
       setStatusError("Failed to update registration status");
-      console.error("Error updating registration status:", error);
     } finally {
       setIsStatusLoading(false);
     }
@@ -745,12 +743,10 @@ function Dashboard() {
       }
 
       const data = await response.json();
-      console.log("API Response:", data); // Log the API response
-
+      
       // Get the link from the response data
       const link = data.result1 || data.url || data.link;
-      console.log("Generated Link:", link); // Log the extracted link
-
+      
       if (!link) {
         throw new Error("No link received from API");
       }
@@ -764,7 +760,6 @@ function Dashboard() {
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
     } catch (error) {
-      console.error("Error generating link:", error);
       setSnackbarMessage("Failed to generate link. Please try again.");
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
@@ -781,7 +776,6 @@ function Dashboard() {
         setSnackbarOpen(true);
       },
       (err) => {
-        console.error("Failed to copy link:", err);
         setSnackbarMessage("Failed to copy link");
         setSnackbarSeverity("error");
         setSnackbarOpen(true);
@@ -809,8 +803,6 @@ function Dashboard() {
   };
 
   const SignupLinkModal = () => {
-    console.log("Modal Render - Generated Link:", generatedLink); // Debug log
-    
     return (
       <Dialog
         open={signupLinkModalOpen}
@@ -841,7 +833,6 @@ function Dashboard() {
             </FormControl>
           </MKBox>
           
-          {/* Debug information */}
           <MKTypography variant="caption" color="text.secondary" mb={2}>
             Status: {isGeneratingLink ? 'Generating...' : generatedLink ? 'Link Generated' : 'Waiting'}
           </MKTypography>

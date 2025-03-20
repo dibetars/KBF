@@ -29,6 +29,7 @@ function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [featuredPlayers, setFeaturedPlayers] = useState([]);
 
   const handleVideoOpen = () => setVideoOpen(true);
   const handleVideoClose = () => setVideoOpen(false);
@@ -72,19 +73,28 @@ function HomePage() {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
+        setIsLoading(true);
         const response = await fetch(
           "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
         );
-        
         if (!response.ok) {
           throw new Error("Failed to fetch players");
         }
-
         const data = await response.json();
-        // Filter only sponsored players
-        setSponsoredPlayers(data.filter(player => player.Sponsor));
+        
+        // Get only players with images
+        const playersWithImages = data.filter(
+          (player) => player.image && player.image.url
+        );
+        
+        // Shuffle array to get random players
+        const shuffled = playersWithImages.sort(() => 0.5 - Math.random());
+        
+        // Get sub-array of first n elements after shuffled
+        setFeaturedPlayers(shuffled.slice(0, 8));
       } catch (error) {
-        console.error("Error fetching players:", error);
+        // Handle error silently
+        setFeaturedPlayers([]);
       } finally {
         setIsLoading(false);
       }

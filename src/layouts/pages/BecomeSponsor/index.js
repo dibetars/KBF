@@ -67,7 +67,7 @@ function BecomeSponsor() {
   const checkEmailExists = async (email) => {
     try {
       const response = await fetch(
-        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_sponsors/check",
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/check_email",
         {
           method: "POST",
           headers: {
@@ -80,7 +80,7 @@ function BecomeSponsor() {
       const data = await response.json();
       return !!data.email; // Returns true if email exists, false otherwise
     } catch (err) {
-      console.error("Error checking email:", err);
+      // Error occurred while checking email
       return false;
     }
   };

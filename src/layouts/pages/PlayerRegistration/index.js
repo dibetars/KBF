@@ -6,30 +6,31 @@ function PlayerRegistration() {
   const [registrationStatus, setRegistrationStatus] = useState(true);
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState("");
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkRegistrationStatus = async () => {
+    const fetchRegistrationStatus = async () => {
       try {
-        setIsStatusLoading(true);
         const response = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbkregstat/603bee96-f7bc-45f2-ad62-7eba2d4ab90a"
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/registration_status"
         );
-
+        
         if (!response.ok) {
-          throw new Error("Failed to check registration status");
+          throw new Error("Failed to fetch registration status");
         }
-
+        
         const data = await response.json();
-        setRegistrationStatus(data.Status);
+        setIsRegistrationOpen(data.isOpen);
       } catch (error) {
-        setStatusError("Failed to check registration status");
-        console.error("Error checking registration status:", error);
+        // Error handling
+        setIsRegistrationOpen(false);
       } finally {
-        setIsStatusLoading(false);
+        setIsLoading(false);
       }
     };
-
-    checkRegistrationStatus();
+    
+    fetchRegistrationStatus();
   }, []);
 
   return (
@@ -103,7 +104,7 @@ function PlayerRegistration() {
                   </MKTypography>
                 </MKBox>
                 <MKBox pt={4} pb={3} px={3}>
-                  {isStatusLoading ? (
+                  {isLoading ? (
                     <MKBox display="flex" justifyContent="center" p={3}>
                       <CircularProgress />
                     </MKBox>
@@ -111,7 +112,7 @@ function PlayerRegistration() {
                     <Alert severity="error" sx={{ mb: 3 }}>
                       {statusError}
                     </Alert>
-                  ) : !registrationStatus ? (
+                  ) : !isRegistrationOpen ? (
                     <Alert 
                       severity="info" 
                       sx={{ 

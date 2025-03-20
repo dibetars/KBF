@@ -83,6 +83,43 @@ function Authentication() {
     }
   };
 
+  const verifyToken = async (token) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/auth/token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Authentication failed");
+      }
+
+      const data = await response.json();
+      if (data && data.id) {
+        login();
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("auth_id", data.id);
+        navigate("/dashboard");
+      } else {
+        throw new Error("Invalid authentication response");
+      }
+    } catch (error) {
+      setError("Authentication failed");
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_id");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <MKBox
