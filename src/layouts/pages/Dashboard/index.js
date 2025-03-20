@@ -3,6 +3,7 @@ import Container from "@mui/material/Container";
 import Card from "@mui/material/Card";
 import MKBox from "components/MKBox";
 import MKTypography from "components/MKTypography";
+import MKInput from "components/MKInput";
 import Header from "components/Header";
 import Avatar from "@mui/material/Avatar";
 import Chip from "@mui/material/Chip";
@@ -38,6 +39,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import AddLinkIcon from '@mui/icons-material/AddLink';
+import LockIcon from '@mui/icons-material/Lock';
 
 function Dashboard() {
   const theme = useTheme();
@@ -63,6 +65,10 @@ function Dashboard() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordAttempts, setPasswordAttempts] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,7 +113,37 @@ function Dashboard() {
       }
     };
 
-    fetchData();
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated]);
+
+  const handlePasswordSubmit = () => {
+    if (password === "H4y^%dew") {
+      setIsAuthenticated(true);
+      setPasswordError("");
+      // Store in session storage to maintain authentication during the session
+      sessionStorage.setItem("dashboardAuthenticated", "true");
+    } else {
+      setPasswordAttempts(prevAttempts => prevAttempts + 1);
+      setPasswordError("Incorrect password. Please try again.");
+      
+      // Lock for 30 seconds after 5 attempts
+      if (passwordAttempts >= 4) {
+        setPasswordError("Too many incorrect attempts. Please try again in 30 seconds.");
+        setPassword("");
+        setTimeout(() => {
+          setPasswordAttempts(0);
+          setPasswordError("");
+        }, 30000);
+      }
+    }
+  };
+
+  // Check for existing authentication on component mount
+  useEffect(() => {
+    const authenticated = sessionStorage.getItem("dashboardAuthenticated") === "true";
+    setIsAuthenticated(authenticated);
   }, []);
 
   const handleTabChange = (event, newValue) => {
@@ -861,6 +897,66 @@ function Dashboard() {
       </Dialog>
     );
   };
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Header />
+        <MKBox
+          sx={{
+            backgroundColor: "#f8f9fa",
+            minHeight: '100vh',
+            paddingTop: { xs: '60px', sm: '70px' },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Container maxWidth="sm">
+            <Card sx={{ p: 4 }}>
+              <MKBox textAlign="center" mb={3}>
+                <LockIcon color="error" sx={{ fontSize: 60, mb: 2 }} />
+                <MKTypography variant="h4" mb={1}>
+                  Dashboard Access
+                </MKTypography>
+                <MKTypography variant="body2" color="text">
+                  Please enter your password to access the dashboard
+                </MKTypography>
+              </MKBox>
+              
+              <MKBox component="form" onSubmit={(e) => { e.preventDefault(); handlePasswordSubmit(); }}>
+                <MKBox mb={3}>
+                  <MKInput
+                    type="password"
+                    label="Password"
+                    fullWidth
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    error={!!passwordError}
+                    disabled={passwordAttempts >= 5}
+                  />
+                  {passwordError && (
+                    <MKTypography variant="caption" color="error">
+                      {passwordError}
+                    </MKTypography>
+                  )}
+                </MKBox>
+                <MKButton
+                  variant="gradient"
+                  color="error"
+                  fullWidth
+                  type="submit"
+                  disabled={!password || passwordAttempts >= 5}
+                >
+                  Login
+                </MKButton>
+              </MKBox>
+            </Card>
+          </Container>
+        </MKBox>
+      </>
+    );
+  }
 
   return (
     <>
