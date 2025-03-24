@@ -61,6 +61,7 @@ function SignupWithToken() {
   const [tokenData, setTokenData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -158,7 +159,7 @@ function SignupWithToken() {
 
         // Submit registration with token
         const registerResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:LfeuGUZr/tokenSignup",
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players",
           {
             method: "POST",
             headers: {
@@ -200,8 +201,13 @@ function SignupWithToken() {
           // Failed to mark token as used, but continue with registration success
         }
 
-        // Redirect to success page
-        navigate("/registration-success");
+        // Show success message
+        setIsSuccess(true);
+        
+        // Redirect to success page after 5 seconds
+        setTimeout(() => {
+          navigate("/registration-success");
+        }, 5000);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -243,6 +249,21 @@ function SignupWithToken() {
           </Alert>
           <MKTypography variant="body2" textAlign="center">
             Redirecting to home page...
+          </MKTypography>
+        </MKBox>
+      </Container>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <Container maxWidth="sm">
+        <MKBox mt={6}>
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Thank you for submitting your registration! You will be redirected to the success page shortly.
+          </Alert>
+          <MKTypography variant="body2" textAlign="center">
+            Redirecting to success page...
           </MKTypography>
         </MKBox>
       </Container>
@@ -359,9 +380,7 @@ function SignupWithToken() {
                         label="How did you hear about us?"
                       >
                         <MenuItem value="Social Media">Social Media</MenuItem>
-                        <MenuItem value="Friend">Friend</MenuItem>
-                        <MenuItem value="School">School</MenuItem>
-                        <MenuItem value="Church">Church</MenuItem>
+                        <MenuItem value="A Coach">A Coach</MenuItem>
                         <MenuItem value="Other">Other</MenuItem>
                       </Select>
                       {formik.touched.Channel && formik.errors.Channel && (
@@ -386,16 +405,24 @@ function SignupWithToken() {
                     </Grid>
                   )}
                   <Grid item xs={12} md={6}>
-                    <MKInput
-                      type="text"
-                      label="Education"
-                      name="education"
-                      fullWidth
-                      value={formik.values.education}
-                      onChange={formik.handleChange}
-                      error={formik.touched.education && Boolean(formik.errors.education)}
-                      helperText={formik.touched.education && formik.errors.education}
-                    />
+                    <FormControl fullWidth error={formik.touched.education && Boolean(formik.errors.education)}>
+                      <InputLabel>Education</InputLabel>
+                      <Select
+                        name="education"
+                        value={formik.values.education}
+                        onChange={formik.handleChange}
+                        label="Education"
+                      >
+                        <MenuItem value="Wrote WASSCE">Wrote WASSCE</MenuItem>
+                        <MenuItem value="Completed SHS">Completed SHS</MenuItem>
+                        <MenuItem value="Currently in SHS">Currently in SHS</MenuItem>
+                      </Select>
+                      {formik.touched.education && formik.errors.education && (
+                        <MKTypography variant="caption" color="error">
+                          {formik.errors.education}
+                        </MKTypography>
+                      )}
+                    </FormControl>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth error={formik.touched.shirtSize && Boolean(formik.errors.shirtSize)}>
@@ -406,11 +433,9 @@ function SignupWithToken() {
                         onChange={formik.handleChange}
                         label="Shirt Size"
                       >
-                        <MenuItem value="S">Small (S)</MenuItem>
-                        <MenuItem value="M">Medium (M)</MenuItem>
-                        <MenuItem value="L">Large (L)</MenuItem>
-                        <MenuItem value="XL">Extra Large (XL)</MenuItem>
-                        <MenuItem value="XXL">Double XL (XXL)</MenuItem>
+                        <MenuItem value="Large">Large</MenuItem>
+                        <MenuItem value="Medium">Medium</MenuItem>
+                        <MenuItem value="Small">Small</MenuItem>
                       </Select>
                       {formik.touched.shirtSize && formik.errors.shirtSize && (
                         <MKTypography variant="caption" color="error">
