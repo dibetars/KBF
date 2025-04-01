@@ -40,11 +40,47 @@ import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import LockIcon from '@mui/icons-material/Lock';
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  AppBar,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import {
+  Dashboard as DashboardIcon,
+  TableChart as TableIcon,
+  Payment as BillingIcon,
+  Person as ProfileIcon,
+  Menu as MenuIcon,
+  TrendingUp,
+  ShoppingCart,
+  ThumbUp,
+} from "@mui/icons-material";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 function Dashboard() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [players, setPlayers] = useState([]);
   const [sponsors, setSponsors] = useState([]);
@@ -69,6 +105,10 @@ function Dashboard() {
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [passwordAttempts, setPasswordAttempts] = useState(0);
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [registrationTrends, setRegistrationTrends] = useState([]);
+  const [paymentStats, setPaymentStats] = useState([]);
+  const [sponsorshipDistribution, setSponsorshipDistribution] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,9 +154,25 @@ function Dashboard() {
     };
 
     if (isAuthenticated) {
-      fetchData();
+    fetchData();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Calculate registration trends
+      const trends = calculateRegistrationTrends();
+      setRegistrationTrends(trends);
+
+      // Calculate payment statistics
+      const payments = calculatePaymentStats();
+      setPaymentStats(payments);
+
+      // Calculate sponsorship distribution
+      const sponsorships = calculateSponsorshipDistribution();
+      setSponsorshipDistribution(sponsorships);
+    }
+  }, [players, sponsors, isAuthenticated]);
 
   const handlePasswordSubmit = () => {
     if (password === "H4y^%dew") {
@@ -179,15 +235,15 @@ function Dashboard() {
     let status;
     let color;
 
-    if (activeTab === 0) { // Unsponsored Players
-      status = rowData.paymentReference ? "Paid" : "Pending";
-      color = rowData.paymentReference ? "info" : "warning";
-    } else if (activeTab === 1) { // Sponsors
-      status = rowData.paymentReference ? "Paid" : "Pending";
-      color = rowData.paymentReference ? "success" : "warning";
-    } else { // Team (Sponsored Players)
-      status = rowData.sponsorsID ? "Sponsored" : "Available";
-      color = rowData.sponsorsID ? "success" : "info";
+    if (rowData.Sponsor && rowData.sponsorsID) {
+      status = "Sponsored";
+      color = "success";
+    } else if (rowData.paymentReference) {
+      status = "Paid";
+      color = "info";
+    } else {
+      status = "Pending";
+      color = "warning";
     }
 
     return (
@@ -263,7 +319,7 @@ function Dashboard() {
     if (isMobile) {
       return ['fullName', 'paymentReference'];
     }
-    if (isTablet) {
+    if (isMobile) {
       return ['fullName', 'paymentReference', 'created_at'];
     }
     return ['fullName', 'position', 'paymentReference', 'Channel', 'created_at'];
@@ -396,6 +452,12 @@ function Dashboard() {
     return Math.floor((sponsorNumber || 0) / 46500);
   };
 
+  const sponsorNameTemplate = (rowData) => {
+    if (!rowData.sponsorsID) return null;
+    const sponsor = sponsors.find(s => s.id === rowData.sponsorsID);
+    return sponsor ? sponsor.fullName : 'Unknown';
+  };
+
   const DetailModal = () => {
     if (!selectedRow) return null;
 
@@ -477,6 +539,10 @@ function Dashboard() {
       { 
         label: "Status", 
         value: selectedRow.sponsorsID ? "Sponsored" : (selectedRow.paymentReference ? "Paid" : "Pending")
+      },
+      { 
+        label: "Sponsor", 
+        value: selectedRow.sponsorsID ? sponsorNameTemplate(selectedRow) : "Not Sponsored"
       },
       { label: "Registration Date", value: new Date(selectedRow.created_at).toLocaleDateString() },
     ] : [
@@ -640,8 +706,8 @@ function Dashboard() {
               </Grid>
             )}
 
-            {/* Only show sponsor assignment for Team tab */}
-            {isTeamMember && !selectedRow.sponsorsID && (
+            {/* Sponsor Assignment for Players */}
+            {isPlayer && !selectedRow.sponsorsID && (
               <Grid item xs={12}>
                 <FormControl fullWidth variant="standard" sx={{ mt: 2 }}>
                   <InputLabel>Assign Sponsor</InputLabel>
@@ -803,7 +869,7 @@ function Dashboard() {
   };
 
   const SignupLinkModal = () => {
-    return (
+  return (
       <Dialog
         open={signupLinkModalOpen}
         onClose={handleCloseSignupLinkModal}
@@ -889,6 +955,555 @@ function Dashboard() {
     );
   };
 
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const handleViewChange = (view) => {
+    setCurrentView(view);
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  };
+
+  const sidebarContent = (
+    <Box sx={{ 
+      width: 250,
+      height: '100%',
+      bgcolor: 'background.paper',
+      p: 2,
+    }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, pl: 1 }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          KBF Dashboard
+        </Typography>
+        {isMobile && (
+          <IconButton 
+            onClick={handleDrawerToggle}
+            sx={{ ml: 'auto' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        )}
+      </Box>
+      <List>
+        <ListItem 
+          button 
+          onClick={() => handleViewChange('dashboard')}
+          sx={{ 
+            borderRadius: 2,
+            mb: 1,
+            bgcolor: currentView === 'dashboard' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
+          }}
+        >
+          <ListItemIcon>
+            <DashboardIcon />
+          </ListItemIcon>
+          <ListItemText primary="Dashboard" />
+        </ListItem>
+        <ListItem 
+          button 
+          onClick={() => handleViewChange('players')}
+                sx={{
+            borderRadius: 2,
+            mb: 1,
+            bgcolor: currentView === 'players' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
+          }}
+        >
+          <ListItemIcon>
+            <TableIcon />
+          </ListItemIcon>
+          <ListItemText primary="Players" />
+        </ListItem>
+        <ListItem 
+          button 
+          onClick={() => handleViewChange('sponsors')}
+          sx={{ 
+            borderRadius: 2,
+            mb: 1,
+            bgcolor: currentView === 'sponsors' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
+          }}
+        >
+          <ListItemIcon>
+            <BillingIcon />
+          </ListItemIcon>
+          <ListItemText primary="Sponsors" />
+        </ListItem>
+      </List>
+    </Box>
+  );
+
+  const calculateRegistrationTrends = () => {
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      return {
+        month: date.toLocaleString('default', { month: 'short' }),
+        players: 0,
+        sponsors: 0
+      };
+    }).reverse();
+
+    players.forEach(player => {
+      const playerDate = new Date(player.created_at);
+      const monthIndex = last6Months.findIndex(item => 
+        item.month === playerDate.toLocaleString('default', { month: 'short' })
+      );
+      if (monthIndex !== -1) {
+        last6Months[monthIndex].players++;
+      }
+    });
+
+    sponsors.forEach(sponsor => {
+      const sponsorDate = new Date(sponsor.created_at);
+      const monthIndex = last6Months.findIndex(item => 
+        item.month === sponsorDate.toLocaleString('default', { month: 'short' })
+      );
+      if (monthIndex !== -1) {
+        last6Months[monthIndex].sponsors++;
+      }
+    });
+
+    return last6Months;
+  };
+
+  const calculatePaymentStats = () => {
+    const playersPaid = players.filter(p => p.paymentReference).length;
+    const playersUnpaid = players.length - playersPaid;
+    const sponsorsPaid = sponsors.filter(s => s.paymentReference).length;
+    const sponsorsUnpaid = sponsors.length - sponsorsPaid;
+
+    return [
+      { name: 'Players', paid: playersPaid, unpaid: playersUnpaid },
+      { name: 'Sponsors', paid: sponsorsPaid, unpaid: sponsorsUnpaid }
+    ];
+  };
+
+  const calculateSponsorshipDistribution = () => {
+    const positionCounts = {
+      'Forward': 0,
+      'Midfielder': 0,
+      'Defender': 0,
+      'Goalkeeper': 0,
+      'Other': 0
+    };
+
+    players.forEach(player => {
+      const position = player.position?.toLowerCase() || 'other';
+      
+      if (position.includes('forward') || position.includes('striker')) {
+        positionCounts['Forward']++;
+      } else if (position.includes('midfield')) {
+        positionCounts['Midfielder']++;
+      } else if (position.includes('defend')) {
+        positionCounts['Defender']++;
+      } else if (position.includes('goalkeeper') || position.includes('keeper')) {
+        positionCounts['Goalkeeper']++;
+      } else {
+        positionCounts['Other']++;
+      }
+    });
+
+    return Object.entries(positionCounts)
+      .filter(([_, count]) => count > 0) // Only include positions that have players
+      .map(([name, value]) => ({
+        name,
+        value
+      }));
+  };
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  const renderMainContent = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return (
+          <>
+            {/* Stats Cards */}
+            <Grid container spacing={3} mb={4}>
+            <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ 
+                  p: 3, 
+                  bgcolor: 'error.main',
+                  color: 'white',
+                  borderRadius: 2,
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <TrendingUp />
+                    <Typography variant="h6" sx={{ ml: 1 }}>
+                      Active Players
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 1 }}>
+                    {stats.playerCount}
+                  </Typography>
+                  <Typography variant="body2">
+                    Total registered players
+                  </Typography>
+                </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <ShoppingCart />
+                    <Typography variant="h6" sx={{ ml: 1 }}>
+                      Revenue
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 1 }}>
+                    GHS {stats.playerRevenue.toLocaleString()}
+                  </Typography>
+                  <Typography variant="body2">
+                    Total player revenue
+                  </Typography>
+                </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <ThumbUp />
+                    <Typography variant="h6" sx={{ ml: 1 }}>
+                      Sponsors
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 1 }}>
+                    {stats.sponsorCount}
+                  </Typography>
+                  <Typography variant="body2">
+                    Total sponsors
+                  </Typography>
+                </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <MonetizationOnIcon />
+                    <Typography variant="h6" sx={{ ml: 1 }}>
+                      Sponsorships
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 1 }}>
+                    GHS {stats.sponsorRevenue.toLocaleString()}
+                  </Typography>
+                  <Typography variant="body2">
+                    Total sponsorship revenue
+                  </Typography>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Graphs Section */}
+            <Grid container spacing={3}>
+              {/* Registration Trends */}
+              <Grid item xs={12} md={8}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3 }}>
+                    Registration Trends
+                  </Typography>
+                  <Box sx={{ width: '100%', height: 300 }}>
+                    <ResponsiveContainer>
+                      <LineChart data={registrationTrends}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="players" 
+                          stroke="#ff1744" 
+                          name="Players"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="sponsors" 
+                          stroke="#2196f3" 
+                          name="Sponsors"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </Card>
+            </Grid>
+
+              {/* Payment Statistics */}
+              <Grid item xs={12} md={4}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3 }}>
+                    Payment Status
+                  </Typography>
+                  <Box sx={{ width: '100%', height: 300 }}>
+                    <ResponsiveContainer>
+                      <BarChart data={paymentStats}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="paid" name="Paid" fill="#4caf50" />
+                        <Bar dataKey="unpaid" name="Unpaid" fill="#ff9800" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </Card>
+          </Grid>
+
+              {/* Sponsorship Distribution */}
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3 }}>
+                    Position Distribution
+                  </Typography>
+                  <Box sx={{ width: '100%', height: 300 }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={sponsorshipDistribution}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {sponsorshipDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </Card>
+              </Grid>
+
+              {/* Recent Activity */}
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 3, borderRadius: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3 }}>
+                    Recent Activity
+                  </Typography>
+                  <List>
+                    {players.slice(-5).reverse().map((player) => (
+                      <ListItem key={player.id} divider>
+                        <ListItemIcon>
+                          <Avatar sx={{ bgcolor: 'error.main' }}>
+                            {getInitials(player.fullName)}
+                          </Avatar>
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={player.fullName}
+                          secondary={`Registered on ${new Date(player.created_at).toLocaleDateString()}`}
+                        />
+                        <Chip
+                          label={player.paymentReference ? "Paid" : "Pending"}
+                          color={player.paymentReference ? "success" : "warning"}
+                          size="small"
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Card>
+              </Grid>
+            </Grid>
+          </>
+        );
+
+      case 'players':
+        return (
+          <Card sx={{ p: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h5">Players Management</Typography>
+              <MKButton
+                variant="contained"
+                color="error"
+                startIcon={<AddLinkIcon />}
+                onClick={handleOpenSignupLinkModal}
+              >
+                Generate Player Link
+              </MKButton>
+            </Box>
+
+            {/* Sponsored Players Section */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Sponsored Players</Typography>
+              <DataTable 
+                value={players.filter(player => player.Sponsor)} 
+                paginator 
+                rows={10}
+                filterDisplay={isMobile ? "menu" : "row"}
+                stripedRows
+                responsiveLayout="stack"
+                breakpoint="960px"
+                emptyMessage="No sponsored players found."
+                className="custom-datatable"
+                onRowClick={(e) => handleRowClick(e.data)}
+                rowClassName={() => 'cursor-pointer'}
+              >
+                <Column 
+                  field="fullName" 
+                  header="Player" 
+                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
+                  sortable 
+                  filter
+                  filterPlaceholder="Search by name"
+                />
+                {!isMobile && (
+                  <Column 
+                    field="position" 
+                    header="Position" 
+                    sortable 
+                  />
+                )}
+                <Column 
+                  field="Sponsor" 
+                  header="Sponsor" 
+                  body={sponsorNameTemplate}
+                  sortable 
+                />
+                <Column 
+                  field="paymentReference" 
+                  header="Status" 
+                  body={statusBodyTemplate}
+                  sortable
+                />
+                {!isMobile && (
+                  <Column 
+                    field="created_at" 
+                    header="Registration Date" 
+                    body={dateBodyTemplate}
+                    sortable
+                  />
+                )}
+              </DataTable>
+            </Box>
+
+            {/* Regular Players Section */}
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>Regular Players</Typography>
+              <DataTable 
+                value={players.filter(player => !player.Sponsor)} 
+                paginator 
+                rows={10}
+                filterDisplay={isMobile ? "menu" : "row"}
+                stripedRows
+                responsiveLayout="stack"
+                breakpoint="960px"
+                emptyMessage="No regular players found."
+                className="custom-datatable"
+                onRowClick={(e) => handleRowClick(e.data)}
+                rowClassName={() => 'cursor-pointer'}
+              >
+                <Column 
+                  field="fullName" 
+                  header="Player" 
+                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
+                  sortable 
+                  filter
+                  filterPlaceholder="Search by name"
+                />
+                {!isMobile && (
+                  <Column 
+                    field="position" 
+                    header="Position" 
+                    sortable 
+                  />
+                )}
+                <Column 
+                  field="paymentReference" 
+                  header="Status" 
+                  body={statusBodyTemplate}
+                  sortable
+                />
+                {!isMobile && (
+                  <Column 
+                    field="created_at" 
+                    header="Registration Date" 
+                    body={dateBodyTemplate}
+                    sortable
+                  />
+                )}
+              </DataTable>
+            </Box>
+          </Card>
+        );
+
+      case 'sponsors':
+        return (
+          <Card sx={{ p: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h5">Sponsors Management</Typography>
+              <MKButton
+                variant="contained"
+                color="error"
+                startIcon={<AddLinkIcon />}
+                onClick={handleOpenSignupLinkModal}
+              >
+                Generate Sponsor Link
+              </MKButton>
+            </Box>
+              <DataTable 
+                value={sponsors} 
+                paginator 
+              rows={10}
+                filterDisplay={isMobile ? "menu" : "row"}
+                stripedRows
+                responsiveLayout="stack"
+                breakpoint="960px"
+                emptyMessage="No sponsors found."
+                className="custom-datatable"
+                onRowClick={(e) => handleRowClick(e.data)}
+                rowClassName={() => 'cursor-pointer'}
+              >
+                <Column 
+                  field="fullName" 
+                  header="Sponsor" 
+                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
+                  sortable 
+                  filter
+                  filterPlaceholder="Search by name"
+                />
+                {!isMobile && (
+                  <Column 
+                    field="phoneNumber" 
+                    header="Phone Number" 
+                    sortable 
+                  />
+                )}
+                <Column 
+                  field="sponsorNumber" 
+                  header="Amount" 
+                  body={sponsorAmountTemplate}
+                  sortable
+                />
+                <Column 
+                  field="paymentReference" 
+                  header="Status" 
+                  body={statusBodyTemplate}
+                  sortable
+                />
+                {!isMobile && (
+                  <Column 
+                    field="created_at" 
+                    header="Registration Date" 
+                    body={dateBodyTemplate}
+                    sortable
+                  />
+                )}
+              </DataTable>
+          </Card>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <>
@@ -942,321 +1557,90 @@ function Dashboard() {
                   Login
                 </MKButton>
               </MKBox>
-            </Card>
-          </Container>
-        </MKBox>
+          </Card>
+        </Container>
+      </MKBox>
       </>
     );
   }
 
   return (
-    <>
-      <Header />
-      <MKBox
+    <Box sx={{ display: 'flex' }}>
+      {/* Mobile App Bar */}
+      {isMobile && (
+        <AppBar 
+          position="fixed" 
+          sx={{ 
+            bgcolor: 'background.paper',
+            boxShadow: 1,
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDrawerToggle}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" sx={{ color: 'error.main', ml: 2 }}>
+              KBF Dashboard
+            </Typography>
+          </Toolbar>
+        </AppBar>
+      )}
+
+      {/* Sidebar */}
+      <Box
+        component="nav"
         sx={{
-          backgroundColor: "#f8f9fa",
-          minHeight: '100vh',
-          paddingTop: { xs: '60px', sm: '70px' },
-          paddingBottom: { xs: '20px', sm: '30px' },
+          width: { md: 250 },
+          flexShrink: { md: 0 }
+        }}
+      >
+        {isMobile ? (
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{
+              keepMounted: true,
+            }}
+            sx={{
+              '& .MuiDrawer-paper': { width: 250 },
+            }}
+          >
+            {sidebarContent}
+          </Drawer>
+        ) : (
+          <Drawer
+            variant="permanent"
+            sx={{
+              '& .MuiDrawer-paper': { width: 250, boxSizing: 'border-box' },
+            }}
+            open
+          >
+            {sidebarContent}
+          </Drawer>
+        )}
+      </Box>
+
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { md: `calc(100% - 250px)` },
+          mt: { xs: 8, md: 0 },
         }}
       >
         <Container maxWidth="xl">
-          <MKBox sx={customStyles.header} mb={3}>
-            <MKBox 
-              display="flex" 
-              justifyContent="space-between" 
-              alignItems="center"
-              flexDirection={{ xs: 'column', sm: 'row' }}
-              gap={2}
-            >
-              <MKTypography 
-                variant={isMobile ? "h4" : "h3"} 
-                mb={{ xs: 1, sm: 2 }}
-                sx={{ 
-                  fontSize: { 
-                    xs: '1.5rem', 
-                    sm: '2rem', 
-                    md: '2.5rem' 
-                  } 
-                }}
-              >
-                Dashboard
-              </MKTypography>
-              <MKBox 
-                display="flex" 
-                alignItems="center" 
-                gap={2}
-                sx={{
-                  backgroundColor: 'background.paper',
-                  padding: 2,
-                  borderRadius: 1,
-                  boxShadow: 1,
-                }}
-              >
-                <MKButton
-                  variant="contained"
-                  color="info"
-                  startIcon={<AddLinkIcon />}
-                  onClick={handleOpenSignupLinkModal}
-                >
-                  Generate Signup Link
-                </MKButton>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={registrationStatus}
-                      onChange={handleRegistrationToggle}
-                      disabled={isStatusLoading}
-                      color="primary"
-                    />
-                  }
-                  label={
-                    <MKTypography variant="button" fontWeight="regular">
-                      {registrationStatus ? "Registration Open" : "Registration Closed"}
-                    </MKTypography>
-                  }
-                />
-                {isStatusLoading && (
-                  <CircularProgress size={20} />
-                )}
-                {statusError && (
-                  <MKTypography variant="caption" color="error">
-                    {statusError}
-                  </MKTypography>
-                )}
-              </MKBox>
-            </MKBox>
-            <Tabs 
-              value={activeTab} 
-              onChange={handleTabChange}
-              variant={isMobile ? "fullWidth" : "standard"}
-              sx={customStyles.tabs}
-            >
-              <Tab label="Players" />
-              <Tab label="Sponsors" />
-              <Tab label="Team" />
-            </Tabs>
-          </MKBox>
-
-          <Grid container spacing={3} mb={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Total Players"
-                value={stats.playerCount}
-                icon={<PeopleIcon sx={{ color: 'white' }} />}
-                color="error.main"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Total Sponsors"
-                value={stats.sponsorCount}
-                icon={<HandshakeIcon sx={{ color: 'white' }} />}
-                color="info.main"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Players Revenue"
-                value={`GHS ${stats.playerRevenue.toLocaleString()}`}
-                icon={<MonetizationOnIcon sx={{ color: 'white' }} />}
-                color="success.main"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Sponsors Revenue"
-                value={`GHS ${stats.sponsorRevenue.toLocaleString()}`}
-                icon={<MonetizationOnIcon sx={{ color: 'white' }} />}
-                color="warning.main"
-              />
-            </Grid>
-          </Grid>
-
-          <Card sx={customStyles.card}>
-            {isLoading ? (
-              <MKBox p={3} textAlign="center">
-                <MKTypography variant="body1">Loading data...</MKTypography>
-              </MKBox>
-            ) : error ? (
-              <MKBox p={3} textAlign="center" color="error">
-                <MKTypography variant="body1">{error}</MKTypography>
-              </MKBox>
-            ) : activeTab === 0 ? (
-              <DataTable 
-                value={players.filter(player => !player.Sponsor)} 
-                paginator 
-                rows={isMobile ? 5 : 10}
-                filterDisplay={isMobile ? "menu" : "row"}
-                stripedRows
-                responsiveLayout="stack"
-                breakpoint="960px"
-                emptyMessage="No players found."
-                className="custom-datatable"
-                style={{ 
-                  fontSize: isMobile ? '0.875rem' : '1rem',
-                }}
-                sx={customStyles.table}
-                onRowClick={(e) => handleRowClick(e.data)}
-                rowClassName={() => 'cursor-pointer'}
-              >
-                <Column 
-                  field="fullName" 
-                  header="Player" 
-                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
-                  sortable 
-                  filter
-                  filterPlaceholder="Search by name"
-                  style={{ minWidth: isMobile ? '200px' : '300px' }}
-                />
-                {!isMobile && (
-                  <Column 
-                    field="position" 
-                    header="Position" 
-                    sortable 
-                  />
-                )}
-                <Column 
-                  field="paymentReference" 
-                  header="Status" 
-                  body={statusBodyTemplate}
-                  sortable
-                  style={{ width: isMobile ? '100px' : '150px' }}
-                />
-                {!isTablet && (
-                  <Column 
-                    field="Channel" 
-                    header="Channel" 
-                    sortable 
-                  />
-                )}
-                {!isMobile && (
-                  <Column 
-                    field="created_at" 
-                    header="Registration Date" 
-                    body={dateBodyTemplate}
-                    sortable
-                  />
-                )}
-              </DataTable>
-            ) : activeTab === 1 ? (
-              <DataTable 
-                value={sponsors} 
-                paginator 
-                rows={isMobile ? 5 : 10}
-                filterDisplay={isMobile ? "menu" : "row"}
-                stripedRows
-                responsiveLayout="stack"
-                breakpoint="960px"
-                emptyMessage="No sponsors found."
-                className="custom-datatable"
-                style={{ 
-                  fontSize: isMobile ? '0.875rem' : '1rem',
-                }}
-                sx={customStyles.table}
-                onRowClick={(e) => handleRowClick(e.data)}
-                rowClassName={() => 'cursor-pointer'}
-              >
-                <Column 
-                  field="fullName" 
-                  header="Sponsor" 
-                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
-                  sortable 
-                  filter
-                  filterPlaceholder="Search by name"
-                  style={{ minWidth: isMobile ? '200px' : '300px' }}
-                />
-                {!isMobile && (
-                  <Column 
-                    field="phoneNumber" 
-                    header="Phone Number" 
-                    sortable 
-                  />
-                )}
-                <Column 
-                  field="sponsorNumber" 
-                  header="Amount" 
-                  body={sponsorAmountTemplate}
-                  sortable
-                  style={{ width: '150px' }}
-                />
-                <Column 
-                  field="paymentReference" 
-                  header="Status" 
-                  body={statusBodyTemplate}
-                  sortable
-                  style={{ width: isMobile ? '100px' : '150px' }}
-                />
-                {!isMobile && (
-                  <Column 
-                    field="created_at" 
-                    header="Registration Date" 
-                    body={dateBodyTemplate}
-                    sortable
-                  />
-                )}
-              </DataTable>
-            ) : (
-              <DataTable 
-                value={players.filter(player => player.Sponsor)}
-                paginator 
-                rows={isMobile ? 5 : 10}
-                filterDisplay={isMobile ? "menu" : "row"}
-                stripedRows
-                responsiveLayout="stack"
-                breakpoint="960px"
-                emptyMessage="No players found."
-                className="custom-datatable"
-                style={{ 
-                  fontSize: isMobile ? '0.875rem' : '1rem',
-                }}
-                sx={customStyles.table}
-                onRowClick={(e) => handleRowClick(e.data)}
-                rowClassName={() => 'cursor-pointer'}
-              >
-                <Column 
-                  field="fullName" 
-                  header="Player" 
-                  body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
-                  sortable 
-                  filter
-                  filterPlaceholder="Search by name"
-                  style={{ minWidth: isMobile ? '200px' : '300px' }}
-                />
-                {!isMobile && (
-                  <Column 
-                    field="position" 
-                    header="Position" 
-                    sortable 
-                  />
-                )}
-                <Column 
-                  field="paymentReference" 
-                  header="Status" 
-                  body={statusBodyTemplate}
-                  sortable
-                  style={{ width: isMobile ? '100px' : '150px' }}
-                />
-                {!isTablet && (
-                  <Column 
-                    field="Channel" 
-                    header="Channel" 
-                    sortable 
-                  />
-                )}
-                {!isMobile && (
-                  <Column 
-                    field="created_at" 
-                    header="Registration Date" 
-                    body={dateBodyTemplate}
-                    sortable
-                  />
-                )}
-              </DataTable>
-            )}
-          </Card>
+          {renderMainContent()}
         </Container>
-      </MKBox>
+      </Box>
+
+      {/* Modals */}
       <DetailModal />
       <SignupLinkModal />
       <Snackbar
@@ -1268,7 +1652,7 @@ function Dashboard() {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </>
+    </Box>
   );
 }
 
@@ -1285,4 +1669,4 @@ const styleSheet = document.createElement("style");
 styleSheet.innerText = styles;
 document.head.appendChild(styleSheet);
 
-export default Dashboard;
+export default Dashboard; 
