@@ -82,18 +82,18 @@ function HomePage() {
         }
         const data = await response.json();
         
-        // Get only players with images
-        const playersWithImages = data.filter(
-          (player) => player.image && player.image.url
+        // Get only sponsored players with images
+        const sponsoredPlayersWithImages = data.filter(
+          (player) => player.Sponsor === true && player.image && player.image.url
         );
         
         // Shuffle array to get random players
-        const shuffled = playersWithImages.sort(() => 0.5 - Math.random());
+        const shuffled = sponsoredPlayersWithImages.sort(() => 0.5 - Math.random());
         
-        // Get sub-array of first n elements after shuffled
-        setFeaturedPlayers(shuffled.slice(0, 8));
+        // Get exactly 11 players
+        setFeaturedPlayers(shuffled.slice(0, 11));
       } catch (error) {
-        // Handle error silently
+        console.error("Error fetching players:", error);
         setFeaturedPlayers([]);
       } finally {
         setIsLoading(false);
@@ -104,17 +104,31 @@ function HomePage() {
   }, []);
 
   const TacticalBoard = () => {
-    // Group players by position
-    const playersByPosition = {
-      GK: sponsoredPlayers.filter(p => p.position === "GK"),
-      CB: sponsoredPlayers.filter(p => p.position === "CB"),
-      FB: sponsoredPlayers.filter(p => p.position === "FB"),
-      CDM: sponsoredPlayers.filter(p => p.position === "CDM"),
-      CM: sponsoredPlayers.filter(p => p.position === "CM"),
-      CAM: sponsoredPlayers.filter(p => p.position === "CAM"),
-      W: sponsoredPlayers.filter(p => p.position === "W"),
-      ST: sponsoredPlayers.filter(p => p.position === "ST"),
-      CF: sponsoredPlayers.filter(p => p.position === "CF"),
+    // Group players by position for a 4-4-2 formation
+    const formation = {
+      // 1 Goalkeeper
+      GK: featuredPlayers.filter(p => 
+        p.position?.toLowerCase() === "gk" || 
+        p.position?.toLowerCase() === "goalkeeper"
+      ).slice(0, 1),
+
+      // 4 Defenders
+      DEF: featuredPlayers.filter(p => {
+        const pos = p.position?.toLowerCase() || '';
+        return ['cb', 'rb', 'lb', 'defender', 'fb'].includes(pos);
+      }).slice(0, 4),
+
+      // 4 Midfielders
+      MID: featuredPlayers.filter(p => {
+        const pos = p.position?.toLowerCase() || '';
+        return ['cdm', 'cm', 'cam', 'midfielder', 'dm', 'winger', 'rw', 'lw'].includes(pos);
+      }).slice(0, 4),
+
+      // 2 Forwards
+      FWD: featuredPlayers.filter(p => {
+        const pos = p.position?.toLowerCase() || '';
+        return ['st', 'cf', 'striker', 'forward', 'attacker'].includes(pos);
+      }).slice(0, 2),
     };
 
     const PlayerCard = ({ player }) => (
@@ -241,10 +255,10 @@ function HomePage() {
 
         {/* Player Positions */}
         <Grid container sx={{ height: '100%', position: 'relative', zIndex: 1 }}>
-          {/* Forwards (ST, CF) - Top Row */}
+          {/* Forwards - Top Row */}
           <Grid item xs={12} sx={{ height: '20%', display: 'flex', justifyContent: 'center' }}>
             <Grid container spacing={2} justifyContent="center">
-              {[...playersByPosition.ST, ...playersByPosition.CF].map((player, index) => (
+              {formation.FWD.map((player, index) => (
                 <Grid item xs={3} key={player.id} sx={{ display: 'flex', justifyContent: 'center' }}>
                   <PlayerCard player={player} />
                 </Grid>
@@ -252,10 +266,10 @@ function HomePage() {
             </Grid>
           </Grid>
 
-          {/* Attacking Midfielders (CAM, W) */}
+          {/* Midfielders */}
           <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'center' }}>
             <Grid container spacing={2} justifyContent="space-around">
-              {[...playersByPosition.CAM, ...playersByPosition.W].map((player, index) => (
+              {formation.MID.map((player, index) => (
                 <Grid item xs={3} key={player.id}>
                   <PlayerCard player={player} />
                 </Grid>
@@ -263,10 +277,10 @@ function HomePage() {
             </Grid>
           </Grid>
 
-          {/* Central Midfielders (CM, CDM) */}
+          {/* Defenders */}
           <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'center' }}>
             <Grid container spacing={2} justifyContent="space-around">
-              {[...playersByPosition.CM, ...playersByPosition.CDM].map((player, index) => (
+              {formation.DEF.map((player, index) => (
                 <Grid item xs={3} key={player.id}>
                   <PlayerCard player={player} />
                 </Grid>
@@ -274,20 +288,9 @@ function HomePage() {
             </Grid>
           </Grid>
 
-          {/* Defenders (CB, FB) */}
-          <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'center' }}>
-            <Grid container spacing={2} justifyContent="space-around">
-              {[...playersByPosition.CB, ...playersByPosition.FB].map((player, index) => (
-                <Grid item xs={3} key={player.id}>
-                  <PlayerCard player={player} />
-                </Grid>
-              ))}
-            </Grid>
-          </Grid>
-
-          {/* Goalkeeper (GK) - Bottom Row */}
+          {/* Goalkeeper - Bottom Row */}
           <Grid item xs={12} sx={{ height: '20%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-            {playersByPosition.GK.map((player, index) => (
+            {formation.GK.map((player, index) => (
               <Grid item xs={3} key={player.id} sx={{ display: 'flex', justifyContent: 'center' }}>
                 <PlayerCard player={player} />
               </Grid>
