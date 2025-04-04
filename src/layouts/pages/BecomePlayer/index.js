@@ -37,6 +37,7 @@ const validationSchema = Yup.object().shape({
   }),
   education: Yup.string().required("Education level is required"),
   shirtSize: Yup.string().required("Shirt size is required"),
+  highlight: Yup.string(),
 });
 
 const POSITIONS = [
@@ -125,6 +126,7 @@ function BecomePlayer() {
       otherChannel: "",
       education: "",
       shirtSize: "",
+      highlight: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -478,6 +480,20 @@ function BecomePlayer() {
                             </MKTypography>
                           )}
                         </FormControl>
+                      </MKBox>
+                      <MKBox mb={2}>
+                        <MKInput
+                          fullWidth
+                          multiline
+                          rows={3}
+                          label="Career Highlight"
+                          name="highlight"
+                          value={formik.values.highlight}
+                          onChange={formik.handleChange}
+                          error={formik.touched.highlight && Boolean(formik.errors.highlight)}
+                          helperText={formik.touched.highlight && formik.errors.highlight}
+                          placeholder="Share your best football achievement or moment"
+                        />
                       </MKBox>
                       {error && (
                         <MKTypography color="error" variant="caption" mb={2}>

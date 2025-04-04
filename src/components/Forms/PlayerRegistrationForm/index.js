@@ -25,6 +25,7 @@ function PlayerRegistrationForm({ token, linkId }) {
     shirtSize: "",
     channel: "",
     otherChannel: "",
+    highlight: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -244,6 +245,18 @@ function PlayerRegistrationForm({ token, linkId }) {
             />
           </Grid>
         )}
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Career Highlight"
+            name="highlight"
+            value={formData.highlight}
+            onChange={handleChange}
+            multiline
+            rows={3}
+            placeholder="Share your best football achievement or moment"
+          />
+        </Grid>
         {error && (
           <Grid item xs={12}>
             <Alert severity="error">{error}</Alert>
