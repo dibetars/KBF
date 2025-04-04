@@ -1,9 +1,9 @@
-# KBF Dashboard Documentation
+# Kwame Bofrot Foundation Web Application Documentation
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
-2. [Project Structure](#project-structure)
-3. [Technology Stack](#technology-stack)
+2. [Technology Stack](#technology-stack)
+3. [Project Structure](#project-structure)
 4. [Setup and Installation](#setup-and-installation)
 5. [Development Phases](#development-phases)
 6. [Data Flow Architecture](#data-flow-architecture)
@@ -11,196 +11,178 @@
 8. [Current Status and Future Considerations](#current-status-and-future-considerations)
 
 ## Project Overview
-The KBF Dashboard is a comprehensive management system designed for player and sponsor management. It provides functionality for tracking registrations, managing sponsorships, and monitoring payment statuses.
-
-## Project Structure
-```
-KBF/
-├── src/
-│   ├── components/
-│   │   ├── Header/
-│   │   ├── MKBox/
-│   │   ├── MKButton/
-│   │   ├── MKInput/
-│   │   └── MKTypography/
-│   ├── layouts/
-│   │   └── pages/
-│   │       └── Dashboard/
-│   └── assets/
-│       ├── images/
-│       └── styles/
-├── public/
-│   └── index.html
-└── package.json
-```
-
-### Key Directories and Files
-- `src/layouts/pages/Dashboard/index.js`: Main dashboard component
-- `src/components/`: Reusable UI components
-- `src/assets/`: Static assets and global styles
+The Kwame Bofrot Foundation web application is built on Material Kit 2 React, providing a platform for managing and showcasing sponsored soccer players. The application features user role-based access, player management, and an interactive player showcase.
 
 ## Technology Stack
 ### Frontend
 - React.js
-- Material-UI (MUI)
-- PrimeReact
-- Recharts for data visualization
+- Material-UI (MUI) Components
+- Material Kit 2 React Template
+- React Router for navigation
+- Custom MUI components (MKBox, MKButton, MKTypography, etc.)
 
-### UI Components
-- Material-UI components
-- Custom MK components
-- PrimeReact DataTable
+### Backend
+- Xano Backend Service
+- RESTful API Integration
+- JSON Data Structure
 
 ### Styling
-- Material-UI styling system
-- CSS-in-JS
-- Responsive design patterns
+- Material Design System
+- Responsive Design
+- Custom CSS-in-JS using MUI's styled API
+- Flexbox and Grid layouts
+
+## Project Structure
+```
+material-kit-2-react
+├── public/
+│   ├── images/
+│   ├── videos/
+│   └── index.html
+├── src/
+│   ├── assets/
+│   │   ├── images/
+│   │   └── theme/
+│   ├── components/
+│   │   ├── MKAlert/
+│   │   ├── MKAvatar/
+│   │   └── [other components]/
+│   ├── layouts/
+│   │   └── pages/
+│   │       ├── Dashboard/
+│   │       ├── HomePage/
+│   │       └── [other pages]/
+│   └── App.js
+└── package.json
+```
+
+### Key Directories and Files
+- `src/layouts/pages/Dashboard/`: Contains the main dashboard implementation
+- `src/layouts/pages/HomePage/`: Homepage with featured players display
+- `src/components/`: Reusable UI components
+- `src/assets/theme/`: Theme configuration and styling
 
 ## Setup and Installation
 
 ### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn package manager
+1. Node.js LTS version
+2. npm or yarn package manager
+3. Git (for version control)
 
 ### Installation Steps
-1. Clone the repository
+1. Clone the repository:
 ```bash
 git clone [repository-url]
 cd KBF
 ```
 
-2. Install dependencies
+2. Install dependencies:
 ```bash
 npm install
 # or
 yarn install
 ```
 
-3. Start the development server
+3. Environment Setup:
+- Create `.env` file in root directory
+- Add necessary environment variables:
+```
+REACT_APP_API_URL=https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP
+```
+
+4. Start the development server:
 ```bash
 npm start
 # or
 yarn start
 ```
 
-### Environment Setup
-1. Create `.env` file in the root directory
-2. Add required environment variables:
-```
-REACT_APP_API_URL=https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP
-```
-
 ## Development Phases
 
-### Phase 1: Initial Development
-#### Features Implemented
-- Basic dashboard structure
-- Authentication system
-- Player management interface
-- Sponsor management interface
+### Phase 1: Initial Implementation
+- Base setup using Material Kit 2 React
+- Integration with Xano backend
+- Implementation of basic user authentication
 
-#### Code Implementations
+### Phase 2: Dashboard Development
+- Implementation of player management system
+- Role-based access control (Admin/Sponsor views)
+- Player filtering and categorization
+
+### Phase 3: Featured Players Section
+#### Recent Updates
+1. Modified featured players display:
+   - Limited to exactly 11 players
+   - Shows only sponsored players
+   - Implemented 4-4-2 formation display
+   - Enhanced position filtering
+
 ```javascript
-// Authentication Implementation
-const validatePassword = (pwd) => {
-  if (pwd === "H4y^%dew") {
-    return "admin";
-  } else if (pwd === "We342(;s") {
-    return "sponsor";
-  }
-  return null;
+const formation = {
+  // 1 Goalkeeper
+  GK: featuredPlayers.filter(p => 
+    p.position?.toLowerCase() === "gk" || 
+    p.position?.toLowerCase() === "goalkeeper"
+  ).slice(0, 1),
+
+  // 4 Defenders
+  DEF: featuredPlayers.filter(p => {
+    const pos = p.position?.toLowerCase() || '';
+    return ['cb', 'rb', 'lb', 'defender', 'fb'].includes(pos);
+  }).slice(0, 4),
+
+  // 4 Midfielders
+  MID: featuredPlayers.filter(p => {
+    const pos = p.position?.toLowerCase() || '';
+    return ['cdm', 'cm', 'cam', 'midfielder', 'dm', 'winger', 'rw', 'lw'].includes(pos);
+  }).slice(0, 4),
+
+  // 2 Forwards
+  FWD: featuredPlayers.filter(p => {
+    const pos = p.position?.toLowerCase() || '';
+    return ['st', 'cf', 'striker', 'forward', 'attacker'].includes(pos);
+  }).slice(0, 2),
 };
-```
-
-### Phase 2: Enhanced Features
-#### Features Added
-- Grid layout for player management
-- Position-based categorization
-- Improved filtering logic
-
-#### Code Snippets
-```javascript
-const groupPlayersByPosition = (playersList) => {
-  return {
-    'Forwards': playersList.filter(p => {
-      const pos = p.position?.toLowerCase() || '';
-      return ['st', 'cf', 'striker', 'forward', 'attacker', 'rw', 'lw'].includes(pos);
-    }),
-    'Midfielders': playersList.filter(p => {
-      const pos = p.position?.toLowerCase() || '';
-      return ['cdm', 'cam', 'winger', 'midfielder', 'dm'].includes(pos);
-    }),
-    'Defenders': playersList.filter(p => {
-      const pos = p.position?.toLowerCase() || '';
-      return ['defender', 'cb', 'rb', 'lb'].includes(pos);
-    }),
-    'Goalkeepers': playersList.filter(p => {
-      const pos = p.position?.toLowerCase() || '';
-      return pos === 'gk';
-    })
-  };
-};
-```
-
-### Phase 3: Debugging and Optimization
-#### Issues Addressed
-- Fixed player filtering logic
-- Improved position categorization
-- Enhanced console logging for debugging
-
-#### Code Improvements
-```javascript
-// Enhanced debugging logs
-console.log("=== Sponsor View Debug Logs ===");
-console.log("1. All players:", players);
-console.log("2. Players with Sponsor field:", players.map(p => ({
-  name: p.fullName,
-  sponsor: p.Sponsor,
-  sponsorId: p.sponsorsID,
-  paymentRef: p.paymentReference
-})));
 ```
 
 ## Data Flow Architecture
 
-### Authentication Flow
-1. User enters password
-2. System validates credentials
-3. Role-based access granted (admin/sponsor)
-4. Session storage maintains authentication state
+### Player Data Flow
+1. Data Fetching:
+   - API calls to Xano backend
+   - Player data filtering and processing
+   - State management using React hooks
 
-### Player Management Flow
-1. Data fetching from API
-2. Position-based categorization
-3. Filtering into sponsored/regular players
-4. Grid/table display based on user role
+2. Data Display:
+   - Position-based grouping
+   - Role-based content filtering
+   - Interactive player cards
 
-### Sponsorship Management Flow
-1. Sponsor assignment validation
-2. Payment status tracking
-3. Player-sponsor relationship management
-
-## Recent Updates
-1. Implemented grid layout for player management
-2. Enhanced position categorization logic
-3. Added detailed console logging for debugging
-4. Improved filtering mechanism for sponsored players
+3. User Interactions:
+   - Player detail modal
+   - Sponsor assignments
+   - Admin management features
 
 ## Current Status and Future Considerations
 
 ### Current Status
-- Fully functional dashboard with role-based access
-- Improved player categorization system
-- Enhanced debugging capabilities
+- Implemented featured players section with 4-4-2 formation
+- Enhanced player filtering and categorization
+- Improved sponsor role view
+- Added responsive design elements
 
 ### Future Considerations
-1. Implement advanced search functionality
-2. Add bulk player management features
-3. Enhance data visualization components
-4. Implement real-time updates
-5. Add export functionality for reports
+1. Performance Optimization:
+   - Implement pagination for large datasets
+   - Add caching for frequently accessed data
+   - Optimize image loading
 
-### Known Issues
-- Position categorization edge cases
-- Mobile responsiveness improvements needed
-- Performance optimization for large datasets 
+2. Feature Enhancements:
+   - Add more formation options
+   - Implement player statistics
+   - Enhanced search and filter capabilities
+
+3. UI/UX Improvements:
+   - Add animations for player transitions
+   - Enhance mobile responsiveness
+   - Implement dark mode 
