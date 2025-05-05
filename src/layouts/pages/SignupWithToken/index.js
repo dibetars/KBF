@@ -15,6 +15,9 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
 
 const validationSchema = Yup.object().shape({
   fullName: Yup.string().required("Full name is required"),
@@ -35,6 +38,7 @@ const validationSchema = Yup.object().shape({
   }),
   education: Yup.string().required("Education level is required"),
   shirtSize: Yup.string().required("Shirt size is required"),
+  network: Yup.string().required("Mobile money network is required"),
 });
 
 const POSITIONS = [
@@ -53,6 +57,108 @@ const POSITIONS = [
   { value: "SS", label: "Second Striker (SS)" },
 ];
 
+function PaymentStep({ formData, onPaymentComplete, onBack }) {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState("");
+
+  const handlePayment = async () => {
+    try {
+      setIsProcessing(true);
+      setError("");
+
+      const response = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/paystack_charge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          amount: 46500, // GHS 465 in pesewas
+          phone: formData.phonNumber,
+          provider: formData.network
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Payment initiation failed");
+      }
+
+      const data = await response.json();
+      onPaymentComplete(data.reference);
+    } catch (err) {
+      setError(err.message || "Payment failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Card sx={{ p: 4 }}>
+      <MKBox textAlign="center" mb={4}>
+        <MKTypography variant="h3" mb={1}>
+          Payment Details
+        </MKTypography>
+        <MKTypography variant="body2" color="text">
+          Please confirm your payment details for GHS 465
+        </MKTypography>
+      </MKBox>
+
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <MKTypography variant="body1" mb={2}>
+            Selected Network: {formData.network === 'vod' ? 'Vodafone Cash' : 
+                             formData.network === 'mtn' ? 'MTN Mobile Money' : 
+                             'AirtelTigo Money'}
+          </MKTypography>
+          <MKTypography variant="body1" mb={2}>
+            Phone Number: {formData.phonNumber}
+          </MKTypography>
+          <MKTypography variant="body1" mb={2}>
+            Amount: GHS 465
+          </MKTypography>
+        </Grid>
+
+        {error && (
+          <Grid item xs={12}>
+            <Alert severity="error">{error}</Alert>
+          </Grid>
+        )}
+
+        <Grid item xs={12}>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <MKButton
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={onBack}
+                disabled={isProcessing}
+              >
+                Back
+              </MKButton>
+            </Grid>
+            <Grid item xs={6}>
+              <MKButton
+                variant="gradient"
+                color="error"
+                fullWidth
+                onClick={handlePayment}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  "Pay Now"
+                )}
+              </MKButton>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Card>
+  );
+}
+
 function SignupWithToken() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -62,6 +168,8 @@ function SignupWithToken() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [currentStep, setCurrentStep] = useState("form"); // "form" or "payment"
+  const [paymentReference, setPaymentReference] = useState("");
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -141,6 +249,7 @@ function SignupWithToken() {
       otherChannel: "",
       education: "",
       shirtSize: "",
+      network: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -157,57 +266,8 @@ function SignupWithToken() {
           return;
         }
 
-        // Submit registration with token
-        const registerResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              ...values,
-              paymentReference: "",
-              pId: "",
-              Sponsor: false,
-              image: null,
-              sponsorsID: null
-            }),
-          }
-        );
-
-        if (!registerResponse.ok) {
-          throw new Error("Registration failed. Please try again.");
-        }
-
-        // Mark token as used
-        const markUsedResponse = await fetch(
-          `https://x8ki-letl-twmt.n7.xano.io/api:LfeuGUZr/tokenExp/${token}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              token,
-              type: tokenData.type,
-              used: true,
-              expires_at: null
-            }),
-          }
-        );
-
-        if (!markUsedResponse.ok) {
-          // Failed to mark token as used, but continue with registration success
-        }
-
-        // Show success message
-        setIsSuccess(true);
-        
-        // Redirect to success page after 5 seconds
-        setTimeout(() => {
-          navigate("/registration-success");
-        }, 5000);
+        // Move to payment step
+        setCurrentStep("payment");
       } catch (err) {
         setError(err.message);
       } finally {
@@ -215,6 +275,69 @@ function SignupWithToken() {
       }
     },
   });
+
+  const handlePaymentComplete = async (reference) => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // Submit registration with token and payment reference
+      const registerResponse = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formik.values,
+            paymentReference: reference,
+            pId: "",
+            Sponsor: false,
+            image: null,
+            sponsorsID: null
+          }),
+        }
+      );
+
+      if (!registerResponse.ok) {
+        throw new Error("Registration failed. Please try again.");
+      }
+
+      // Mark token as used
+      const markUsedResponse = await fetch(
+        `https://x8ki-letl-twmt.n7.xano.io/api:LfeuGUZr/tokenExp/${token}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            type: tokenData.type,
+            used: true,
+            expires_at: null
+          }),
+        }
+      );
+
+      if (!markUsedResponse.ok) {
+        // Failed to mark token as used, but continue with registration success
+      }
+
+      // Show success message
+      setIsSuccess(true);
+      
+      // Redirect to success page after 5 seconds
+      setTimeout(() => {
+        navigate("/registration-success");
+      }, 5000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleEmailBlur = async (e) => {
     const email = e.target.value;
@@ -285,190 +408,218 @@ function SignupWithToken() {
     >
       <Container>
         <Grid container spacing={3} justifyContent="center">
-          <Grid item xs={12} md={8} lg={6}>
-            <Card sx={{ p: 4 }}>
-              <MKBox textAlign="center" mb={4}>
-                <MKTypography variant="h3" mb={1}>
-                  Player Registration
-                </MKTypography>
-                <MKTypography variant="body2" color="text">
-                  Please fill in your details below
-                </MKTypography>
-              </MKBox>
+          <Grid item xs={12} md={8}>
+            {currentStep === "form" ? (
+              <Card sx={{ p: 4 }}>
+                <MKBox textAlign="center" mb={4}>
+                  <MKTypography variant="h3" mb={1}>
+                    Player Registration
+                  </MKTypography>
+                  <MKTypography variant="body2" color="text">
+                    Please fill in your details below
+                  </MKTypography>
+                </MKBox>
 
-              <form onSubmit={formik.handleSubmit}>
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <MKInput
-                      type="text"
-                      label="Full Name"
-                      name="fullName"
-                      fullWidth
-                      value={formik.values.fullName}
-                      onChange={formik.handleChange}
-                      error={formik.touched.fullName && Boolean(formik.errors.fullName)}
-                      helperText={formik.touched.fullName && formik.errors.fullName}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <MKInput
-                      type="email"
-                      label="Email"
-                      name="email"
-                      fullWidth
-                      value={formik.values.email}
-                      onChange={formik.handleChange}
-                      onBlur={handleEmailBlur}
-                      error={formik.touched.email && (Boolean(formik.errors.email) || emailExists)}
-                      helperText={formik.touched.email && (formik.errors.email || (emailExists && "This email is already registered"))}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <MKInput
-                      type="date"
-                      label="Date of Birth"
-                      name="DOB"
-                      fullWidth
-                      value={formik.values.DOB}
-                      onChange={formik.handleChange}
-                      error={formik.touched.DOB && Boolean(formik.errors.DOB)}
-                      helperText={formik.touched.DOB && formik.errors.DOB}
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth error={formik.touched.position && Boolean(formik.errors.position)}>
-                      <InputLabel>Position</InputLabel>
-                      <Select
-                        name="position"
-                        value={formik.values.position}
-                        onChange={formik.handleChange}
-                        label="Position"
-                      >
-                        {POSITIONS.map((pos) => (
-                          <MenuItem key={pos.value} value={pos.value}>
-                            {pos.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {formik.touched.position && formik.errors.position && (
-                        <MKTypography variant="caption" color="error">
-                          {formik.errors.position}
-                        </MKTypography>
-                      )}
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <MKInput
-                      type="tel"
-                      label="Phone Number"
-                      name="phonNumber"
-                      fullWidth
-                      value={formik.values.phonNumber}
-                      onChange={formik.handleChange}
-                      error={formik.touched.phonNumber && Boolean(formik.errors.phonNumber)}
-                      helperText={formik.touched.phonNumber && formik.errors.phonNumber}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth error={formik.touched.Channel && Boolean(formik.errors.Channel)}>
-                      <InputLabel>How did you hear about us?</InputLabel>
-                      <Select
-                        name="Channel"
-                        value={formik.values.Channel}
-                        onChange={formik.handleChange}
-                        label="How did you hear about us?"
-                      >
-                        <MenuItem value="Social Media">Social Media</MenuItem>
-                        <MenuItem value="A Coach">A Coach</MenuItem>
-                        <MenuItem value="Other">Other</MenuItem>
-                      </Select>
-                      {formik.touched.Channel && formik.errors.Channel && (
-                        <MKTypography variant="caption" color="error">
-                          {formik.errors.Channel}
-                        </MKTypography>
-                      )}
-                    </FormControl>
-                  </Grid>
-                  {formik.values.Channel === "Other" && (
-                    <Grid item xs={12} md={6}>
+                <form onSubmit={formik.handleSubmit}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12}>
                       <MKInput
                         type="text"
-                        label="Please specify"
-                        name="otherChannel"
+                        label="Full Name"
+                        name="fullName"
                         fullWidth
-                        value={formik.values.otherChannel}
+                        value={formik.values.fullName}
                         onChange={formik.handleChange}
-                        error={formik.touched.otherChannel && Boolean(formik.errors.otherChannel)}
-                        helperText={formik.touched.otherChannel && formik.errors.otherChannel}
+                        error={formik.touched.fullName && Boolean(formik.errors.fullName)}
+                        helperText={formik.touched.fullName && formik.errors.fullName}
                       />
                     </Grid>
-                  )}
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth error={formik.touched.education && Boolean(formik.errors.education)}>
-                      <InputLabel>Education</InputLabel>
-                      <Select
-                        name="education"
-                        value={formik.values.education}
-                        onChange={formik.handleChange}
-                        label="Education"
-                      >
-                        <MenuItem value="Wrote WASSCE">Wrote WASSCE</MenuItem>
-                        <MenuItem value="Completed SHS">Completed SHS</MenuItem>
-                        <MenuItem value="Currently in SHS">Currently in SHS</MenuItem>
-                      </Select>
-                      {formik.touched.education && formik.errors.education && (
-                        <MKTypography variant="caption" color="error">
-                          {formik.errors.education}
-                        </MKTypography>
-                      )}
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth error={formik.touched.shirtSize && Boolean(formik.errors.shirtSize)}>
-                      <InputLabel>Shirt Size</InputLabel>
-                      <Select
-                        name="shirtSize"
-                        value={formik.values.shirtSize}
-                        onChange={formik.handleChange}
-                        label="Shirt Size"
-                      >
-                        <MenuItem value="Large">Large</MenuItem>
-                        <MenuItem value="Medium">Medium</MenuItem>
-                        <MenuItem value="Small">Small</MenuItem>
-                      </Select>
-                      {formik.touched.shirtSize && formik.errors.shirtSize && (
-                        <MKTypography variant="caption" color="error">
-                          {formik.errors.shirtSize}
-                        </MKTypography>
-                      )}
-                    </FormControl>
-                  </Grid>
-                  {error && (
                     <Grid item xs={12}>
-                      <Alert severity="error" sx={{ mb: 2 }}>
-                        {error}
-                      </Alert>
+                      <MKInput
+                        type="email"
+                        label="Email"
+                        name="email"
+                        fullWidth
+                        value={formik.values.email}
+                        onChange={formik.handleChange}
+                        onBlur={handleEmailBlur}
+                        error={formik.touched.email && (Boolean(formik.errors.email) || emailExists)}
+                        helperText={formik.touched.email && (formik.errors.email || (emailExists && "This email is already registered"))}
+                      />
                     </Grid>
-                  )}
-                  <Grid item xs={12}>
-                    <MKButton
-                      type="submit"
-                      variant="gradient"
-                      color="error"
-                      fullWidth
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <CircularProgress size={24} color="inherit" />
-                      ) : (
-                        "Submit Registration"
-                      )}
-                    </MKButton>
+                    <Grid item xs={12} md={6}>
+                      <MKInput
+                        type="date"
+                        label="Date of Birth"
+                        name="DOB"
+                        fullWidth
+                        value={formik.values.DOB}
+                        onChange={formik.handleChange}
+                        error={formik.touched.DOB && Boolean(formik.errors.DOB)}
+                        helperText={formik.touched.DOB && formik.errors.DOB}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth error={formik.touched.position && Boolean(formik.errors.position)}>
+                        <InputLabel>Position</InputLabel>
+                        <Select
+                          name="position"
+                          value={formik.values.position}
+                          onChange={formik.handleChange}
+                          label="Position"
+                        >
+                          {POSITIONS.map((pos) => (
+                            <MenuItem key={pos.value} value={pos.value}>
+                              {pos.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {formik.touched.position && formik.errors.position && (
+                          <MKTypography variant="caption" color="error">
+                            {formik.errors.position}
+                          </MKTypography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth error={formik.touched.network && Boolean(formik.errors.network)}>
+                        <InputLabel>Mobile Money Network</InputLabel>
+                        <Select
+                          name="network"
+                          value={formik.values.network}
+                          onChange={formik.handleChange}
+                          label="Mobile Money Network"
+                        >
+                          <MenuItem value="vod">Vodafone Cash</MenuItem>
+                          <MenuItem value="mtn">MTN Mobile Money</MenuItem>
+                          <MenuItem value="atl">AirtelTigo Money</MenuItem>
+                        </Select>
+                        {formik.touched.network && formik.errors.network && (
+                          <MKTypography variant="caption" color="error">
+                            {formik.errors.network}
+                          </MKTypography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <MKInput
+                        type="tel"
+                        label="Phone Number"
+                        name="phonNumber"
+                        fullWidth
+                        value={formik.values.phonNumber}
+                        onChange={formik.handleChange}
+                        error={formik.touched.phonNumber && Boolean(formik.errors.phonNumber)}
+                        helperText={formik.touched.phonNumber && formik.errors.phonNumber}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth error={formik.touched.Channel && Boolean(formik.errors.Channel)}>
+                        <InputLabel>How did you hear about us?</InputLabel>
+                        <Select
+                          name="Channel"
+                          value={formik.values.Channel}
+                          onChange={formik.handleChange}
+                          label="How did you hear about us?"
+                        >
+                          <MenuItem value="Social Media">Social Media</MenuItem>
+                          <MenuItem value="A Coach">A Coach</MenuItem>
+                          <MenuItem value="Other">Other</MenuItem>
+                        </Select>
+                        {formik.touched.Channel && formik.errors.Channel && (
+                          <MKTypography variant="caption" color="error">
+                            {formik.errors.Channel}
+                          </MKTypography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    {formik.values.Channel === "Other" && (
+                      <Grid item xs={12} md={6}>
+                        <MKInput
+                          type="text"
+                          label="Please specify"
+                          name="otherChannel"
+                          fullWidth
+                          value={formik.values.otherChannel}
+                          onChange={formik.handleChange}
+                          error={formik.touched.otherChannel && Boolean(formik.errors.otherChannel)}
+                          helperText={formik.touched.otherChannel && formik.errors.otherChannel}
+                        />
+                      </Grid>
+                    )}
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth error={formik.touched.education && Boolean(formik.errors.education)}>
+                        <InputLabel>Education</InputLabel>
+                        <Select
+                          name="education"
+                          value={formik.values.education}
+                          onChange={formik.handleChange}
+                          label="Education"
+                        >
+                          <MenuItem value="Wrote WASSCE">Wrote WASSCE</MenuItem>
+                          <MenuItem value="Completed SHS">Completed SHS</MenuItem>
+                          <MenuItem value="Currently in SHS">Currently in SHS</MenuItem>
+                        </Select>
+                        {formik.touched.education && formik.errors.education && (
+                          <MKTypography variant="caption" color="error">
+                            {formik.errors.education}
+                          </MKTypography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth error={formik.touched.shirtSize && Boolean(formik.errors.shirtSize)}>
+                        <InputLabel>Shirt Size</InputLabel>
+                        <Select
+                          name="shirtSize"
+                          value={formik.values.shirtSize}
+                          onChange={formik.handleChange}
+                          label="Shirt Size"
+                        >
+                          <MenuItem value="Large">Large</MenuItem>
+                          <MenuItem value="Medium">Medium</MenuItem>
+                          <MenuItem value="Small">Small</MenuItem>
+                        </Select>
+                        {formik.touched.shirtSize && formik.errors.shirtSize && (
+                          <MKTypography variant="caption" color="error">
+                            {formik.errors.shirtSize}
+                          </MKTypography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    {error && (
+                      <Grid item xs={12}>
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                          {error}
+                        </Alert>
+                      </Grid>
+                    )}
+                    <Grid item xs={12}>
+                      <MKButton
+                        type="submit"
+                        variant="gradient"
+                        color="error"
+                        fullWidth
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <CircularProgress size={24} color="inherit" />
+                        ) : (
+                          "Submit Registration"
+                        )}
+                      </MKButton>
+                    </Grid>
                   </Grid>
-                </Grid>
-              </form>
-            </Card>
+                </form>
+              </Card>
+            ) : (
+              <PaymentStep
+                formData={formik.values}
+                onPaymentComplete={handlePaymentComplete}
+                onBack={() => setCurrentStep("form")}
+              />
+            )}
           </Grid>
         </Grid>
       </Container>

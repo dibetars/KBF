@@ -15,11 +15,11 @@ function PlayerRegistration() {
         const response = await fetch(
           "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/registration_status"
         );
-        
+
         if (!response.ok) {
           throw new Error("Failed to fetch registration status");
         }
-        
+
         const data = await response.json();
         setIsRegistrationOpen(data.isOpen);
       } catch (error) {
@@ -29,7 +29,7 @@ function PlayerRegistration() {
         setIsLoading(false);
       }
     };
-    
+
     fetchRegistrationStatus();
   }, []);
 

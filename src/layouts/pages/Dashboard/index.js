@@ -117,62 +117,70 @@ function Dashboard() {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const navigate = useNavigate();
 
+  const fetchRegistrationStatus = async () => {
+    try {
+      const response = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbkregstat/603bee96-f7bc-45f2-ad62-7eba2d4ab90a"
+        );
+      if (!response.ok) {
+          throw new Error("Failed to fetch registration status");
+        }
+      const data = await response.json();
+      return data.Status;
+    } catch (error) {
+      throw new Error("Failed to fetch registration status");
+    }
+  };
+
+  const fetchPlayers = async () => {
+    try {
+      const response = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
+        );
+      if (!response.ok) {
+        throw new Error("Failed to fetch players");
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      throw new Error("Failed to fetch players");
+    }
+  };
+
+  const fetchSponsors = async () => {
+    try {
+      const response = await fetch(
+          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation"
+        );
+      if (!response.ok) {
+        throw new Error("Failed to fetch sponsors");
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      throw new Error("Failed to fetch sponsors");
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoading(true);
-        console.log("Starting to fetch data...");
-        
-        // Fetch registration status
-        const regStatusResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbkregstat/603bee96-f7bc-45f2-ad62-7eba2d4ab90a"
-        );
+        const [regStatusData, playersData, sponsorsData] = await Promise.all([
+          fetchRegistrationStatus(),
+          fetchPlayers(),
+          fetchSponsors()
+        ]);
 
-        if (!regStatusResponse.ok) {
-          throw new Error("Failed to fetch registration status");
-        }
-
-        const regStatusData = await regStatusResponse.json();
-        console.log("Registration status:", regStatusData);
-        setRegistrationStatus(regStatusData.Status);
-
-        // Fetch players
-        console.log("Fetching players...");
-        const playersResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation_players"
-        );
-
-        // Fetch sponsors
-        console.log("Fetching sponsors...");
-        const sponsorsResponse = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation"
-        );
-
-        if (!playersResponse.ok || !sponsorsResponse.ok) {
-          throw new Error("Failed to fetch data");
-        }
-
-        const playersData = await playersResponse.json();
-        const sponsorsData = await sponsorsResponse.json();
-
-        console.log("Players data:", playersData);
-        console.log("Sponsors data:", sponsorsData);
-
+        setRegistrationStatus(regStatusData);
         setPlayers(playersData);
         setSponsors(sponsorsData);
       } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+        setError("Failed to fetch data. Please try again later.");
       }
     };
 
     if (isAuthenticated) {
-      console.log("User is authenticated, fetching data...");
-      fetchData();
-    } else {
-      console.log("User is not authenticated, skipping data fetch");
+    fetchData();
     }
   }, [isAuthenticated]);
 
@@ -1038,7 +1046,7 @@ function Dashboard() {
             <ListItem 
               button 
               onClick={() => handleViewChange('dashboard')}
-              sx={{ 
+        sx={{
                 borderRadius: 2,
                 mb: 1,
                 bgcolor: currentView === 'dashboard' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
@@ -1068,7 +1076,7 @@ function Dashboard() {
             <ListItem 
               button 
               onClick={() => handleViewChange('sponsors')}
-              sx={{ 
+                sx={{ 
                 borderRadius: 2,
                 mb: 1,
                 bgcolor: currentView === 'sponsors' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
@@ -1086,7 +1094,7 @@ function Dashboard() {
           <ListItem 
             button 
             onClick={() => handleViewChange('players')}
-            sx={{
+                sx={{
               borderRadius: 2,
               mb: 1,
               bgcolor: currentView === 'players' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
@@ -2001,9 +2009,9 @@ function Dashboard() {
                   Access Dashboard
                 </MKButton>
               </MKBox>
-            </Card>
-          </Container>
-        </MKBox>
+          </Card>
+        </Container>
+      </MKBox>
       </>
     );
   }

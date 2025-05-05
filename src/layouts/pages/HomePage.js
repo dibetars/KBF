@@ -30,6 +30,7 @@ function HomePage() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [featuredPlayers, setFeaturedPlayers] = useState([]);
+  const [error, setError] = useState(null);
 
   const handleVideoOpen = () => setVideoOpen(true);
   const handleVideoClose = () => setVideoOpen(false);
@@ -93,8 +94,7 @@ function HomePage() {
         // Get exactly 11 players
         setFeaturedPlayers(shuffled.slice(0, 11));
       } catch (error) {
-        console.error("Error fetching players:", error);
-        setFeaturedPlayers([]);
+        setError("Failed to fetch players. Please try again later.");
       } finally {
         setIsLoading(false);
       }

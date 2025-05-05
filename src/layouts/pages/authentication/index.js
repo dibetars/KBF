@@ -112,7 +112,7 @@ function Authentication() {
         throw new Error("Invalid authentication response");
       }
     } catch (error) {
-      setError("Authentication failed");
+      setError("Authentication failed. Please try again.");
       localStorage.removeItem("auth_token");
       localStorage.removeItem("auth_id");
     } finally {

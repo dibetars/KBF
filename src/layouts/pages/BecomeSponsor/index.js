@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import PaystackPop from "@paystack/inline-js";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
@@ -21,6 +20,9 @@ import PhoneInput from "components/PhoneInput";
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { initiateMobileMoneyPayment } from 'services/payment';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
 
 // Form validation schema
 const validationSchema = Yup.object().shape({
@@ -38,6 +40,9 @@ const validationSchema = Yup.object().shape({
     .max(10, "Maximum 10 players per sponsor")
     .required("Number of players is required"),
   emailUpdates: Yup.boolean(),
+  mobileMoneyProvider: Yup.string()
+    .oneOf(['mtn', 'vod', 'atl'], "Please select a valid mobile money provider")
+    .required("Mobile money provider is required"),
 });
 
 function BecomeSponsor() {
@@ -45,23 +50,11 @@ function BecomeSponsor() {
   const [error, setError] = useState(null);
   const [emailExists, setEmailExists] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
-  const PRICE_PER_PLAYER_USD = 30;
-  const USD_TO_GHS_RATE = 15.5;
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const PRICE_PER_PLAYER_GHS = 465;
 
   const calculateTotalPrice = (numberOfPlayers) => {
-    return numberOfPlayers * PRICE_PER_PLAYER_USD;
-  };
-
-  const calculatePaystackAmount = (numberOfPlayers) => {
-    // Convert USD to GHS and then to pesewas
-    const amountUSD = calculateTotalPrice(numberOfPlayers);
-    const amountGHS = amountUSD * USD_TO_GHS_RATE;
-    return Math.round(amountGHS * 100); // Convert to pesewas and round to whole number
-  };
-
-  const handlePaystackPopup = (access_code) => {
-    const popup = new PaystackPop();
-    popup.resumeTransaction(access_code);
+    return numberOfPlayers * PRICE_PER_PLAYER_GHS;
   };
 
   const checkEmailExists = async (email) => {
@@ -78,9 +71,8 @@ function BecomeSponsor() {
       );
 
       const data = await response.json();
-      return !!data.email; // Returns true if email exists, false otherwise
+      return !!data.email;
     } catch (err) {
-      // Error occurred while checking email
       return false;
     }
   };
@@ -92,12 +84,14 @@ function BecomeSponsor() {
       phoneNumber: "",
       sponsorNumber: "",
       emailUpdates: false,
+      mobileMoneyProvider: "",
     },
     validationSchema,
     onSubmit: async (values) => {
       try {
         setIsSubmitting(true);
         setError(null);
+        setPaymentStatus(null);
 
         // Check if email exists before proceeding
         const exists = await checkEmailExists(values.email);
@@ -108,125 +102,79 @@ function BecomeSponsor() {
           return;
         }
 
-        // Submit form data to database with amount in pesewas
-        const response = await fetch(
-          "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              ...values,
-              sponsorNumber: calculatePaystackAmount(values.sponsorNumber), // Only send GHS amount in pesewas
-            }),
+        // Calculate total amount
+        const totalAmount = calculateTotalPrice(values.sponsorNumber);
+
+        // Initiate mobile money payment
+        const paymentResponse = await initiateMobileMoneyPayment({
+          email: values.email,
+          amount: totalAmount,
+          phone: values.phoneNumber,
+          provider: values.mobileMoneyProvider
+        });
+
+        if (paymentResponse.status) {
+          // Submit form data to database
+          const response = await fetch(
+            "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ...values,
+                sponsorNumber: totalAmount * 100, // Convert to pesewas
+                paymentReference: paymentResponse.data.reference,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to submit application");
           }
-        );
 
-        if (!response.ok) {
-          throw new Error("Failed to submit application");
-        }
-
-        // Get the response with payment access code
-        const data = await response.json();
-        if (data.paymentKey.response.result.data.access_code) {
-          handlePaystackPopup(data.paymentKey.response.result.data.access_code);
+          setPaymentStatus({
+            type: 'success',
+            message: 'Payment initiated successfully. Please check your phone for the payment prompt.',
+            reference: paymentResponse.data.reference
+          });
+          setShowThankYou(true);
         } else {
-          throw new Error("Payment initialization failed");
+          throw new Error(paymentResponse.message || "Payment initiation failed");
         }
       } catch (err) {
         setError(err.message);
+        setPaymentStatus({
+          type: 'error',
+          message: err.message
+        });
+      } finally {
         setIsSubmitting(false);
       }
     },
   });
 
-  const handleEmailBlur = async (e) => {
-    const email = e.target.value;
-    if (email && formik.touched.email && !formik.errors.email) {
-      const exists = await checkEmailExists(email);
-      setEmailExists(exists);
-      if (exists) {
-        formik.setFieldError('email', 'This email is already registered as a sponsor');
-      }
-    }
-  };
-
-  // Generate array of numbers 1-10 for select options
-  const playerOptions = Array.from({ length: 10 }, (_, i) => i + 1);
-
-  const ThankYouModal = () => (
-    <Dialog 
-      open={showThankYou} 
-      onClose={() => setShowThankYou(false)}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogContent>
-        <MKBox 
-          display="flex" 
-          flexDirection="column" 
-          alignItems="center" 
-          textAlign="center" 
-          py={3}
-        >
-          <CheckCircleIcon 
-            sx={{ 
-              fontSize: 64, 
-              color: 'success.main',
-              mb: 2 
-            }} 
-          />
-          <MKTypography variant="h4" mb={2}>
-            Thank You for Your Sponsorship!
-          </MKTypography>
-          <MKTypography variant="body1" color="text.secondary" mb={3}>
-            Your generous support will help make a difference in young athletes' lives. 
-            We'll send you updates about your sponsored players via email.
-          </MKTypography>
-          <MKButton 
-            variant="contained" 
-            color="error" 
-            onClick={() => setShowThankYou(false)}
-          >
-            Close
-          </MKButton>
-        </MKBox>
-      </DialogContent>
-    </Dialog>
-  );
-
   return (
     <>
       <Header />
       <MKBox
+        minHeight="100vh"
+        width="100%"
         sx={{
-          paddingTop: "60px",
-          minHeight: "calc(100vh - 60px)", // Subtract header height
-          display: "flex",
-          flexDirection: "column",
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/images/soccer-feet.jpg')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          paddingTop: "70px",
         }}
-        bgcolor="white"
       >
-        <Container
-          sx={{
-            py: 6,
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <MKTypography variant="h2" mb={3}>
-                Become a Sponsor
-              </MKTypography>
-              <MKTypography variant="body1" color="text" mb={4}>
-                Your support can change a young athlete&apos;s life. Fill out the form below to
-                start your sponsorship journey.
-              </MKTypography>
-              <Card sx={{ p: 3 }}>
+        <Container>
+          <Grid container justifyContent="center" py={6}>
+            <Grid item xs={12} md={8} lg={6}>
+              <Card sx={{ p: 4 }}>
+                <MKTypography variant="h3" textAlign="center" mb={3}>
+                  Become a Sponsor
+                </MKTypography>
                 <form onSubmit={formik.handleSubmit}>
                   <MKBox mb={2}>
                     <MKInput
@@ -235,7 +183,6 @@ function BecomeSponsor() {
                       name="fullName"
                       value={formik.values.fullName}
                       onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
                       error={formik.touched.fullName && Boolean(formik.errors.fullName)}
                       helperText={formik.touched.fullName && formik.errors.fullName}
                       required
@@ -244,23 +191,13 @@ function BecomeSponsor() {
                   <MKBox mb={2}>
                     <MKInput
                       fullWidth
-                      type="email"
                       label="Email"
                       name="email"
+                      type="email"
                       value={formik.values.email}
                       onChange={formik.handleChange}
-                      onBlur={(e) => {
-                        formik.handleBlur(e);
-                        handleEmailBlur(e);
-                      }}
-                      error={
-                        (formik.touched.email && Boolean(formik.errors.email)) ||
-                        emailExists
-                      }
-                      helperText={
-                        (formik.touched.email && formik.errors.email) ||
-                        (emailExists && "This email is already registered as a sponsor")
-                      }
+                      error={formik.touched.email && Boolean(formik.errors.email)}
+                      helperText={formik.touched.email && formik.errors.email}
                       required
                     />
                   </MKBox>
@@ -295,9 +232,9 @@ function BecomeSponsor() {
                         <MenuItem value="" disabled>
                           Select number of players
                         </MenuItem>
-                        {playerOptions.map((number) => (
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => (
                           <MenuItem key={number} value={number}>
-                            {number} Player{number > 1 ? "s" : ""} - ${calculateTotalPrice(number)}
+                            {number} Player{number > 1 ? "s" : ""} - GHS {calculateTotalPrice(number)}
                           </MenuItem>
                         ))}
                       </Select>
@@ -309,15 +246,41 @@ function BecomeSponsor() {
                     </FormControl>
                   </MKBox>
 
+                  <MKBox mb={2}>
+                    <FormControl fullWidth variant="standard">
+                      <InputLabel shrink>Mobile Money Provider</InputLabel>
+                      <Select
+                        name="mobileMoneyProvider"
+                        value={formik.values.mobileMoneyProvider}
+                        onChange={formik.handleChange}
+                        error={formik.touched.mobileMoneyProvider && Boolean(formik.errors.mobileMoneyProvider)}
+                        displayEmpty
+                        sx={{
+                          height: "43px",
+                          "& .MuiSelect-select": {
+                            paddingTop: "12px",
+                          },
+                        }}
+                      >
+                        <MenuItem value="" disabled>
+                          Select provider
+                        </MenuItem>
+                        <MenuItem value="mtn">MTN Mobile Money</MenuItem>
+                        <MenuItem value="vod">Vodafone Cash</MenuItem>
+                        <MenuItem value="atl">AirtelTigo Money</MenuItem>
+                      </Select>
+                      {formik.touched.mobileMoneyProvider && formik.errors.mobileMoneyProvider && (
+                        <MKTypography variant="caption" color="error">
+                          {formik.errors.mobileMoneyProvider}
+                        </MKTypography>
+                      )}
+                    </FormControl>
+                  </MKBox>
+
                   {formik.values.sponsorNumber && (
                     <MKBox mb={3}>
                       <MKTypography variant="body2" color="text">
-                        Total Sponsorship Amount: $
-                        {calculateTotalPrice(formik.values.sponsorNumber)} USD (₵
-                        {(
-                          calculateTotalPrice(formik.values.sponsorNumber) * USD_TO_GHS_RATE
-                        ).toFixed(2)}{" "}
-                        GHS)
+                        Total Sponsorship Amount: GHS {calculateTotalPrice(formik.values.sponsorNumber)}
                       </MKTypography>
                     </MKBox>
                   )}
@@ -340,41 +303,66 @@ function BecomeSponsor() {
                       sx={{ width: "100%" }}
                     />
                   </MKBox>
+
                   {error && (
                     <MKTypography color="error" variant="caption" mb={2}>
                       {error}
                     </MKTypography>
                   )}
+
+                  {paymentStatus && (
+                    <Alert 
+                      severity={paymentStatus.type} 
+                      sx={{ mb: 2 }}
+                    >
+                      {paymentStatus.message}
+                    </Alert>
+                  )}
+
                   <MKButton
-                    type="submit"
                     variant="contained"
                     color="error"
                     fullWidth
+                    type="submit"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Processing..." : "Sponsor Now"}
+                    {isSubmitting ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Become a Sponsor"
+                    )}
                   </MKButton>
                 </form>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6} display="flex" alignItems="center">
-              <MKBox
-                component="img"
-                src="/images/sponsor-image.jpg"
-                alt="Young soccer player"
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  maxHeight: "600px",
-                  objectFit: "cover",
-                  borderRadius: "xl",
-                }}
-              />
-            </Grid>
           </Grid>
         </Container>
       </MKBox>
-      <ThankYouModal />
+
+      <Dialog
+        open={showThankYou}
+        onClose={() => setShowThankYou(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <MKBox textAlign="center" py={4}>
+            <CheckCircleIcon color="success" sx={{ fontSize: 60, mb: 2 }} />
+            <MKTypography variant="h4" mb={2}>
+              Thank You for Your Sponsorship!
+            </MKTypography>
+            <MKTypography variant="body1" mb={3}>
+              Your application has been submitted successfully. Please check your phone for the mobile money payment prompt to complete your sponsorship.
+            </MKTypography>
+            {paymentStatus?.reference && (
+              <MKTypography variant="caption" color="text.secondary">
+                Reference: {paymentStatus.reference}
+              </MKTypography>
+            )}
+          </MKBox>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </>
   );
