@@ -23,12 +23,7 @@ const validationSchema = Yup.object().shape({
   fullName: Yup.string().required("Full name is required"),
   email: Yup.string().email("Invalid email").required("Email is required"),
   DOB: Yup.string()
-    .required("Date of birth is required")
-    .test("DOB", "Date must be between 1990 and 2009", (value) => {
-      if (!value) return false;
-      const date = new Date(value);
-      return date >= new Date("1990-01-01") && date <= new Date("2009-12-31");
-    }),
+    .required("Date of birth is required"),
   position: Yup.string().required("Position is required"),
   phonNumber: Yup.string().required("Phone number is required"),
   Channel: Yup.string().required("Please select how you heard about us"),

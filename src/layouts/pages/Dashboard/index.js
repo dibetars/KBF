@@ -51,6 +51,13 @@ import {
   Toolbar,
   Typography,
   TablePagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -1447,242 +1454,6 @@ function Dashboard() {
         );
 
       case 'players':
-        if (userRole === 'sponsor') {
-          // Add detailed logging for debugging
-          console.log("=== Sponsor View Debug Logs ===");
-          console.log("1. All players:", players);
-          console.log("2. Players with Sponsor field:", players.map(p => ({
-            name: p.fullName,
-            sponsor: p.Sponsor,
-            sponsorId: p.sponsorsID,
-            paymentRef: p.paymentReference
-          })));
-          
-          // Use consistent filtering logic
-          const sponsoredPlayers = players.filter(player => player.Sponsor === true);
-          const regularPlayers = players.filter(player => player.Sponsor !== true);
-          console.log("3. Filtered sponsored players:", sponsoredPlayers);
-          console.log("4. Filtered regular players:", regularPlayers);
-
-          // Group players by position
-          const groupPlayersByPosition = (playersList) => {
-            return {
-              'Forwards': playersList.filter(p => {
-                const pos = p.position?.toLowerCase() || '';
-                return ['st', 'cf', 'striker', 'forward', 'attacker', 'rw', 'lw'].includes(pos);
-              }),
-              'Midfielders': playersList.filter(p => {
-                const pos = p.position?.toLowerCase() || '';
-                return ['cdm', 'cam', 'winger', 'midfielder', 'dm'].includes(pos);
-              }),
-              'Defenders': playersList.filter(p => {
-                const pos = p.position?.toLowerCase() || '';
-                return ['defender', 'cb', 'rb', 'lb'].includes(pos);
-              }),
-              'Goalkeepers': playersList.filter(p => {
-                const pos = p.position?.toLowerCase() || '';
-                return pos === 'gk';
-              })
-            };
-          };
-
-          const sponsoredPositions = groupPlayersByPosition(sponsoredPlayers);
-          const regularPositions = groupPlayersByPosition(regularPlayers);
-
-          // Add pagination handlers
-          const handleChangePage = (event, newPage) => {
-            setPage(newPage);
-          };
-
-          const handleChangeRowsPerPage = (event) => {
-            setRowsPerPage(parseInt(event.target.value, 10));
-            setPage(0);
-          };
-
-          return (
-            <Box>
-              <Typography variant="h5" sx={{ mb: 3 }}>Players Management</Typography>
-              
-              {/* Sponsored Players Section */}
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Sponsored Players
-                </Typography>
-                <Grid container spacing={3}>
-                  {Object.entries(sponsoredPositions).map(([position, positionPlayers]) => {
-                    // Apply pagination to position players
-                    const start = page * rowsPerPage;
-                    const paginatedPlayers = positionPlayers.slice(start, start + rowsPerPage);
-                    
-                    return positionPlayers.length > 0 && (
-                      <Grid item xs={12} md={6} key={position}>
-                        <Card sx={{ p: 3, height: '100%' }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            mb: 2,
-                            pb: 2,
-                            borderBottom: 1,
-                            borderColor: 'divider'
-                          }}>
-                            <Typography variant="h6">{position}</Typography>
-                            <Chip 
-                              label={`${positionPlayers.length} Player${positionPlayers.length !== 1 ? 's' : ''}`}
-                              color="primary"
-                              size="small"
-                              sx={{ ml: 2 }}
-                            />
-                          </Box>
-                          <Grid container spacing={2}>
-                            {paginatedPlayers.map((player) => (
-                              <Grid item xs={12} sm={6} key={player.id}>
-                                <Card 
-                                  sx={{ 
-                                    cursor: 'pointer',
-                                    '&:hover': {
-                                      bgcolor: 'action.hover',
-                                      transform: 'translateY(-2px)',
-                                      transition: 'transform 0.2s',
-                                    },
-                                    p: 2,
-                                    height: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                  }}
-                                  onClick={() => handleRowClick(player)}
-                                >
-                                  <Box display="flex" alignItems="center" width="100%">
-                                    <Avatar 
-                                      sx={{ 
-                                        bgcolor: 'error.main',
-                                        width: 40,
-                                        height: 40,
-                                        mr: 2
-                                      }}
-                                    >
-                                      {getInitials(player.fullName)}
-                                    </Avatar>
-                                    <Box flex={1} sx={{ minWidth: 0 }}>
-                                      <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                                        {player.fullName}
-                                      </Typography>
-                                      <Typography variant="caption" color="text.secondary" noWrap>
-                                        {player.position}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                          {positionPlayers.length > rowsPerPage && (
-                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                              <TablePagination
-                                component="div"
-                                count={positionPlayers.length}
-                                page={page}
-                                onPageChange={handleChangePage}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={handleChangeRowsPerPage}
-                                rowsPerPageOptions={[5, 10, 15]}
-                                showFirstButton
-                                showLastButton
-                                sx={{
-                                  '.MuiTablePagination-actions': {
-                                    marginLeft: 2
-                                  }
-                                }}
-                              />
-                            </Box>
-                          )}
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Box>
-
-              {/* Regular Players Section - Only show for admin */}
-              {userRole !== 'sponsor' && (
-              <Box sx={{ mt: 4 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Regular Players
-                </Typography>
-                <Grid container spacing={3}>
-                  {Object.entries(regularPositions).map(([position, positionPlayers]) => (
-                    positionPlayers.length > 0 && (
-                        <Grid item xs={12} md={6} key={position}>
-                        <Card sx={{ p: 3, height: '100%' }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            mb: 2,
-                            pb: 2,
-                            borderBottom: 1,
-                            borderColor: 'divider'
-                          }}>
-                            <Typography variant="h6">{position}</Typography>
-                            <Chip 
-                              label={`${positionPlayers.length} Player${positionPlayers.length !== 1 ? 's' : ''}`}
-                              color="primary"
-                              size="small"
-                              sx={{ ml: 2 }}
-                            />
-                          </Box>
-                          <Grid container spacing={2}>
-                            {positionPlayers.map((player) => (
-                                <Grid item xs={12} sm={6} key={player.id}>
-                                <Card 
-                                  sx={{ 
-                                    cursor: 'pointer',
-                                    '&:hover': {
-                                      bgcolor: 'action.hover',
-                                      transform: 'translateY(-2px)',
-                                      transition: 'transform 0.2s',
-                                    },
-                                      p: 2,
-                                      height: '100%',
-                                      display: 'flex',
-                                      alignItems: 'center'
-                                  }}
-                                  onClick={() => handleRowClick(player)}
-                                >
-                                    <Box display="flex" alignItems="center" width="100%">
-                                    <Avatar 
-                                      sx={{ 
-                                        bgcolor: 'primary.main',
-                                          width: 40,
-                                          height: 40,
-                                        mr: 2
-                                      }}
-                                    >
-                                      {getInitials(player.fullName)}
-                                    </Avatar>
-                                      <Box flex={1} sx={{ minWidth: 0 }}>
-                                        <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                                        {player.fullName}
-                                      </Typography>
-                                        <Typography variant="caption" color="text.secondary" noWrap>
-                                        {player.position}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </Card>
-                      </Grid>
-                    )
-                  ))}
-                </Grid>
-              </Box>
-              )}
-            </Box>
-          );
-        }
-
-        console.log("Rendering admin players view with data:", players);
         return (
           <Card sx={{ p: 3, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -1699,191 +1470,99 @@ function Dashboard() {
               )}
             </Box>
 
-            {/* Group players by position for admin view */}
-            {(() => {
-              const groupPlayersByPosition = (playersList) => {
-                return {
-                  'Forwards': playersList.filter(p => {
-                    const pos = p.position?.toLowerCase() || '';
-                    return ['st', 'cf', 'striker', 'forward', 'attacker', 'rw', 'lw'].includes(pos);
-                  }),
-                  'Midfielders': playersList.filter(p => {
-                    const pos = p.position?.toLowerCase() || '';
-                    return ['cdm', 'cam', 'winger', 'midfielder', 'dm'].includes(pos);
-                  }),
-                  'Defenders': playersList.filter(p => {
-                    const pos = p.position?.toLowerCase() || '';
-                    return ['defender', 'cb', 'rb', 'lb'].includes(pos);
-                  }),
-                  'Goalkeepers': playersList.filter(p => {
-                    const pos = p.position?.toLowerCase() || '';
-                    return pos === 'gk';
-                  })
-                };
-              };
-
-              const sponsoredPlayers = players.filter(player => player.Sponsor === true);
-              const regularPlayers = players.filter(player => player.Sponsor !== true);
-              
-              const sponsoredPositions = groupPlayersByPosition(sponsoredPlayers);
-              const regularPositions = groupPlayersByPosition(regularPlayers);
-
-              return (
-                <>
-            {/* Sponsored Players Section */}
-            <Box sx={{ mb: userRole === 'admin' ? 4 : 0 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                {userRole === 'admin' ? 'Sponsored Players' : 'Sponsored Players'}
-              </Typography>
-                    <Grid container spacing={3}>
-                      {Object.entries(sponsoredPositions).map(([position, positionPlayers]) => (
-                        positionPlayers.length > 0 && (
-                          <Grid item xs={12} md={6} key={position}>
-                            <Card sx={{ p: 3, height: '100%' }}>
-                              <Box sx={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                mb: 2,
-                                pb: 2,
-                                borderBottom: 1,
-                                borderColor: 'divider'
-                              }}>
-                                <Typography variant="h6">{position}</Typography>
-                                <Chip 
-                                  label={`${positionPlayers.length} Player${positionPlayers.length !== 1 ? 's' : ''}`}
-                                  color="primary"
-                                  size="small"
-                                  sx={{ ml: 2 }}
-                                />
-                              </Box>
-                              <Grid container spacing={2}>
-                                {positionPlayers.map((player) => (
-                                  <Grid item xs={12} sm={6} key={player.id}>
-                                    <Card 
-                                      sx={{ 
-                                        cursor: 'pointer',
-                                        '&:hover': {
-                                          bgcolor: 'action.hover',
-                                          transform: 'translateY(-2px)',
-                                          transition: 'transform 0.2s',
-                                        },
-                                        p: 2,
-                                        height: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                      }}
-                                      onClick={() => handleRowClick(player)}
-                                    >
-                                      <Box display="flex" alignItems="center" width="100%">
-                                        <Avatar 
-                                          sx={{ 
-                                            bgcolor: 'error.main',
-                                            width: 40,
-                                            height: 40,
-                                            mr: 2
-                                          }}
-                                        >
-                                          {getInitials(player.fullName)}
-                                        </Avatar>
-                                        <Box flex={1} sx={{ minWidth: 0 }}>
-                                          <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                                            {player.fullName}
-                                          </Typography>
-                                          <Typography variant="caption" color="text.secondary" noWrap>
-                                            {player.position}
-                                          </Typography>
-                                        </Box>
-                                      </Box>
-                                    </Card>
-                                  </Grid>
-                                ))}
-                              </Grid>
-                            </Card>
-                          </Grid>
-                        )
-                      ))}
-                    </Grid>
-            </Box>
-
-                  {/* Regular Players Section - Only show for admin */}
-                  {userRole !== 'sponsor' && (
-            <Box sx={{ mt: 4 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Regular Players
-              </Typography>
-                      <Grid container spacing={3}>
-                        {Object.entries(regularPositions).map(([position, positionPlayers]) => (
-                          positionPlayers.length > 0 && (
-                            <Grid item xs={12} md={6} key={position}>
-                              <Card sx={{ p: 3, height: '100%' }}>
-                                <Box sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  mb: 2,
-                                  pb: 2,
-                                  borderBottom: 1,
-                                  borderColor: 'divider'
-                                }}>
-                                  <Typography variant="h6">{position}</Typography>
-                                  <Chip 
-                                    label={`${positionPlayers.length} Player${positionPlayers.length !== 1 ? 's' : ''}`}
-                                    color="primary"
-                                    size="small"
-                                    sx={{ ml: 2 }}
-                                  />
-                                </Box>
-                                <Grid container spacing={2}>
-                                  {positionPlayers.map((player) => (
-                                    <Grid item xs={12} sm={6} key={player.id}>
-                                      <Card 
-                                        sx={{ 
-                                          cursor: 'pointer',
-                                          '&:hover': {
-                                            bgcolor: 'action.hover',
-                                            transform: 'translateY(-2px)',
-                                            transition: 'transform 0.2s',
-                                          },
-                                          p: 2,
-                                          height: '100%',
-                                          display: 'flex',
-                                          alignItems: 'center'
-                                        }}
-                                        onClick={() => handleRowClick(player)}
-                                      >
-                                        <Box display="flex" alignItems="center" width="100%">
-                                          <Avatar 
-                                            sx={{ 
-                                              bgcolor: 'primary.main',
-                                              width: 40,
-                                              height: 40,
-                                              mr: 2
-                                            }}
-                                          >
-                                            {getInitials(player.fullName)}
-                                          </Avatar>
-                                          <Box flex={1} sx={{ minWidth: 0 }}>
-                                            <Typography variant="subtitle2" fontWeight="medium" noWrap>
-                                              {player.fullName}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary" noWrap>
-                                              {player.position}
-                                            </Typography>
-                                          </Box>
-            </Box>
-                                      </Card>
-                                    </Grid>
-                                  ))}
-                                </Grid>
-                              </Card>
-                            </Grid>
-                          )
-                        ))}
-                      </Grid>
-                    </Box>
-                  )}
-                </>
-              );
-            })()}
+            <DataTable 
+              value={players} 
+              paginator 
+              rows={10}
+              filterDisplay={isMobile ? "menu" : "row"}
+              stripedRows
+              responsiveLayout="stack"
+              breakpoint="960px"
+              emptyMessage="No players found."
+              className="custom-datatable"
+              onRowClick={(e) => handleRowClick(e.data)}
+              rowClassName={() => 'cursor-pointer'}
+            >
+              <Column 
+                field="fullName" 
+                header="Player Name" 
+                body={isMobile ? mobileNameBodyTemplate : nameBodyTemplate}
+                sortable 
+                filter
+                filterPlaceholder="Search by name"
+              />
+              {!isMobile && (
+                <Column 
+                  field="position" 
+                  header="Position" 
+                  sortable 
+                  filter
+                />
+              )}
+              {!isMobile && (
+                <Column 
+                  field="DOB" 
+                  header="Date of Birth" 
+                  body={(rowData) => new Date(rowData.DOB).toLocaleDateString()}
+                  sortable
+                />
+              )}
+              {!isMobile && (
+                <Column 
+                  field="education" 
+                  header="Education Level" 
+                  sortable 
+                  filter
+                />
+              )}
+              {!isMobile && (
+                <Column 
+                  field="shirtSize" 
+                  header="Shirt Size" 
+                  sortable
+                />
+              )}
+              {!isMobile && (
+                <Column 
+                  field="created_at" 
+                  header="Registration Date" 
+                  body={(rowData) => new Date(rowData.created_at).toLocaleDateString()}
+                  sortable
+                />
+              )}
+              <Column 
+                field="paymentReference" 
+                header="Payment Status" 
+                body={(rowData) => (
+                  <Chip
+                    label={rowData.paymentReference ? "Paid" : "Pending"}
+                    color={rowData.paymentReference ? "success" : "warning"}
+                    size="small"
+                  />
+                )}
+                sortable
+              />
+              <Column 
+                field="Sponsor" 
+                header="Sponsorship Status" 
+                body={(rowData) => (
+                  rowData.Sponsor ? (
+                    <Chip
+                      label="Sponsored"
+                      color="error"
+                      size="small"
+                    />
+                  ) : (
+                    <Chip
+                      label="Not Sponsored"
+                      color="default"
+                      size="small"
+                    />
+                  )
+                )}
+                sortable
+              />
+            </DataTable>
           </Card>
         );
 

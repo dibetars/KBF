@@ -36,8 +36,6 @@ const validationSchema = Yup.object().shape({
     .matches(/^\+?[0-9]\d{1,14}$/, "Invalid phone number")
     .required("Phone number is required"),
   age: Yup.number()
-    .min(13, "Must be at least 13 years old")
-    .max(19, "Must be under 20 years old")
     .required("Age is required"),
   position: Yup.string()
     .oneOf(['goalkeeper', 'defender', 'midfielder', 'forward'], "Please select a valid position")
