@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Container from "@mui/material/Container";
@@ -20,7 +20,7 @@ import PhoneInput from "components/PhoneInput";
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { initiateMobileMoneyPayment } from 'services/payment';
+import { initiatePayment, submitOtp, verifyPayment } from 'services/payment';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 
@@ -51,7 +51,25 @@ function BecomeSponsor() {
   const [emailExists, setEmailExists] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentReference, setPaymentReference] = useState("");
+  const [otp, setOtp] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showVerifyButton, setShowVerifyButton] = useState(false);
+  const [countdown, setCountdown] = useState(30);
   const PRICE_PER_PLAYER_GHS = 465;
+
+  // Countdown timer for verify button
+  useEffect(() => {
+    let timer;
+    if (showOtpInput && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+    } else if (countdown === 0) {
+      setShowVerifyButton(true);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown, showOtpInput]);
 
   const calculateTotalPrice = (numberOfPlayers) => {
     return numberOfPlayers * PRICE_PER_PLAYER_GHS;
@@ -106,43 +124,15 @@ function BecomeSponsor() {
         const totalAmount = calculateTotalPrice(values.sponsorNumber);
 
         // Initiate mobile money payment
-        const paymentResponse = await initiateMobileMoneyPayment({
+        const paymentData = {
           email: values.email,
-          amount: totalAmount,
-          phone: values.phoneNumber,
-          provider: values.mobileMoneyProvider
-        });
+          provider: values.mobileMoneyProvider,
+          phone: values.phoneNumber
+        };
 
-        if (paymentResponse.status) {
-          // Submit form data to database
-          const response = await fetch(
-            "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                ...values,
-                sponsorNumber: totalAmount * 100, // Convert to pesewas
-                paymentReference: paymentResponse.data.reference,
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to submit application");
-          }
-
-          setPaymentStatus({
-            type: 'success',
-            message: 'Payment initiated successfully. Please check your phone for the payment prompt.',
-            reference: paymentResponse.data.reference
-          });
-          setShowThankYou(true);
-        } else {
-          throw new Error(paymentResponse.message || "Payment initiation failed");
-        }
+        const data = await initiatePayment(paymentData);
+        setPaymentReference(data.reference);
+        setShowOtpInput(true);
       } catch (err) {
         setError(err.message);
         setPaymentStatus({
@@ -154,6 +144,71 @@ function BecomeSponsor() {
       }
     },
   });
+
+  const handleOtpSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      await submitOtp(otp, paymentReference);
+      setShowOtpInput(false);
+    } catch (err) {
+      setError(err.message);
+      setPaymentStatus({
+        type: 'error',
+        message: err.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      await verifyPayment();
+
+      // Calculate total amount
+      const totalAmount = calculateTotalPrice(formik.values.sponsorNumber);
+
+      // Submit form data to database
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formik.values,
+            sponsorNumber: totalAmount * 100, // Convert to pesewas
+            paymentReference: paymentReference,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to submit application");
+      }
+
+      setPaymentStatus({
+        type: 'success',
+        message: 'Registration completed successfully!',
+        reference: paymentReference
+      });
+      setShowThankYou(true);
+    } catch (err) {
+      setError(err.message);
+      setPaymentStatus({
+        type: 'error',
+        message: err.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>

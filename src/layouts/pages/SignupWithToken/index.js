@@ -15,9 +15,7 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
+import { initiatePayment, submitOtp, verifyPayment } from 'services/payment';
 
 const validationSchema = Yup.object().shape({
   fullName: Yup.string().required("Full name is required"),
@@ -55,33 +53,71 @@ const POSITIONS = [
 function PaymentStep({ formData, onPaymentComplete, onBack }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [otp, setOtp] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showVerifyButton, setShowVerifyButton] = useState(false);
+  const [setOtpSubmitted] = useState(false);
 
   const handlePayment = async () => {
     try {
       setIsProcessing(true);
       setError("");
 
-      const response = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/paystack_charge", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          amount: 46500, // GHS 465 in pesewas
-          phone: formData.phonNumber,
-          provider: formData.network
-        }),
-      });
+      const paymentData = {
+        email: formData.email,
+        provider: formData.network,
+        phone: formData.phonNumber
+      };
+      const response = await initiatePayment(paymentData);
 
-      if (!response.ok) {
-        throw new Error("Payment initiation failed");
+      if (response && response.reference) {
+        setPaymentReference(response.reference);
+        setShowOtpInput(true);
+      } else {
+        throw new Error('Invalid payment response: missing reference');
       }
-
-      const data = await response.json();
-      onPaymentComplete(data.reference);
     } catch (err) {
       setError(err.message || "Payment failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    try {
+      setIsProcessing(true);
+      setError("");
+
+      const response = await submitOtp(otp, paymentReference);
+
+      if (response && response.status) {
+        setOtpSubmitted(true);
+        setShowVerifyButton(true);
+        setShowOtpInput(false);
+      } else {
+        throw new Error('OTP verification failed');
+      }
+    } catch (err) {
+      setError(err.message || "OTP verification failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    try {
+      setIsProcessing(true);
+      setError("");
+      const response = await verifyPayment(paymentReference);
+      
+      if (response && response.status) {
+        onPaymentComplete(paymentReference);
+      } else {
+        throw new Error('Payment verification failed');
+      }
+    } catch (err) {
+      setError(err.message || "Payment verification failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -119,36 +155,83 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
           </Grid>
         )}
 
-        <Grid item xs={12}>
-          <Grid container spacing={2}>
-            <Grid item xs={6}>
-              <MKButton
-                variant="outlined"
-                color="error"
-                fullWidth
-                onClick={onBack}
-                disabled={isProcessing}
-              >
-                Back
-              </MKButton>
-            </Grid>
-            <Grid item xs={6}>
-              <MKButton
-                variant="gradient"
-                color="error"
-                fullWidth
-                onClick={handlePayment}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  "Pay Now"
-                )}
-              </MKButton>
+        {showOtpInput && (
+          <Grid item xs={12}>
+            <MKInput
+              type="text"
+              label="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              fullWidth
+              disabled={isProcessing}
+            />
+            <MKButton
+              variant="gradient"
+              color="error"
+              fullWidth
+              onClick={handleOtpSubmit}
+              disabled={isProcessing || !otp}
+              sx={{ mt: 2 }}
+            >
+              {isProcessing ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Submit OTP"
+              )}
+            </MKButton>
+          </Grid>
+        )}
+
+        {showVerifyButton && (
+          <Grid item xs={12}>
+            <MKButton
+              variant="gradient"
+              color="error"
+              fullWidth
+              onClick={handleVerify}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Verify Payment"
+              )}
+            </MKButton>
+          </Grid>
+        )}
+
+        {!showOtpInput && !showVerifyButton && (
+          <Grid item xs={12}>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <MKButton
+                  variant="outlined"
+                  color="error"
+                  fullWidth
+                  onClick={onBack}
+                  disabled={isProcessing}
+                >
+                  Back
+                </MKButton>
+              </Grid>
+              <Grid item xs={6}>
+                <MKButton
+                  variant="gradient"
+                  color="error"
+                  fullWidth
+                  onClick={handlePayment}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "Pay Now"
+                  )}
+                </MKButton>
+              </Grid>
             </Grid>
           </Grid>
-        </Grid>
+        )}
       </Grid>
     </Card>
   );

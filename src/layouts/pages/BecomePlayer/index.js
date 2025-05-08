@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Container from "@mui/material/Container";
@@ -20,7 +20,7 @@ import PhoneInput from "components/PhoneInput";
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { initiateMobileMoneyPayment } from 'services/payment';
+import { initiatePayment, submitOtp, verifyPayment } from 'services/payment';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 
@@ -52,7 +52,25 @@ function BecomePlayer() {
   const [emailExists, setEmailExists] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentReference, setPaymentReference] = useState("");
+  const [otp, setOtp] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showVerifyButton, setShowVerifyButton] = useState(false);
+  const [countdown, setCountdown] = useState(30);
   const REGISTRATION_FEE_GHS = 465;
+
+  // Countdown timer for verify button
+  useEffect(() => {
+    let timer;
+    if (showOtpInput && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+    } else if (countdown === 0) {
+      setShowVerifyButton(true);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown, showOtpInput]);
 
   const checkEmailExists = async (email) => {
     try {
@@ -100,44 +118,7 @@ function BecomePlayer() {
           return;
         }
 
-        // Initiate mobile money payment
-        const paymentResponse = await initiateMobileMoneyPayment({
-          email: values.email,
-          amount: REGISTRATION_FEE_GHS,
-          phone: values.phoneNumber,
-          provider: values.mobileMoneyProvider
-        });
-
-        if (paymentResponse.status) {
-          // Submit form data to database
-          const response = await fetch(
-            "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                ...values,
-                registrationFee: REGISTRATION_FEE_GHS * 100, // Convert to pesewas
-                paymentReference: paymentResponse.data.reference,
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to submit application");
-          }
-
-          setPaymentStatus({
-            type: 'success',
-            message: 'Payment initiated successfully. Please check your phone for the payment prompt.',
-            reference: paymentResponse.data.reference
-          });
-          setShowThankYou(true);
-        } else {
-          throw new Error(paymentResponse.message || "Payment initiation failed");
-        }
+        await handlePayment();
       } catch (err) {
         setError(err.message);
         setPaymentStatus({
@@ -149,6 +130,88 @@ function BecomePlayer() {
       }
     },
   });
+
+  const handlePayment = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      setPaymentStatus(null);
+
+      const data = await initiatePayment();
+      setPaymentReference(data.reference);
+      setShowOtpInput(true);
+    } catch (err) {
+      setError(err.message);
+      setPaymentStatus({
+        type: 'error',
+        message: err.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      await submitOtp(otp, paymentReference);
+      setShowOtpInput(false);
+    } catch (err) {
+      setError(err.message);
+      setPaymentStatus({
+        type: 'error',
+        message: err.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      await verifyPayment();
+
+      // Submit form data to database
+      const response = await fetch(
+        "https://x8ki-letl-twmt.n7.xano.io/api:TF3YOouP/kbfoundation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formik.values,
+            registrationFee: REGISTRATION_FEE_GHS * 100, // Convert to pesewas
+            paymentReference: paymentReference,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to submit application");
+      }
+
+      setPaymentStatus({
+        type: 'success',
+        message: 'Registration completed successfully!',
+        reference: paymentReference
+      });
+      setShowThankYou(true);
+    } catch (err) {
+      setError(err.message);
+      setPaymentStatus({
+        type: 'error',
+        message: err.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
