@@ -50,7 +50,6 @@ export const submitOtp = async (otp, reference) => {
       throw new Error('Invalid OTP response structure');
     }
   } catch (error) {
-    console.error('OTP submission error:', error);
     throw new Error(error.response?.data?.message || 'OTP verification failed');
   }
 };

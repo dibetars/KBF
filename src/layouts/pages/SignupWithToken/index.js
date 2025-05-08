@@ -67,7 +67,10 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
       const paymentData = {
         email: formData.email,
         provider: formData.network,
-        phone: formData.phonNumber
+        phone: formData.phonNumber,
+        name: formData.fullName,
+
+        
       };
       const response = await initiatePayment(paymentData);
 
@@ -368,12 +371,21 @@ function SignupWithToken() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            ...formik.values,
+            fullName: formik.values.fullName,
+            email: formik.values.email,
+            DOB: formik.values.DOB,
+            position: formik.values.position,
+            phonNumber: formik.values.phonNumber,
+            Channel: formik.values.Channel,
+            otherChannel: formik.values.otherChannel,
+            education: formik.values.education,
+            shirtSize: formik.values.shirtSize,
             paymentReference: reference,
             pId: "",
             Sponsor: false,
             image: null,
-            sponsorsID: null
+            sponsorsID: null,
+            highlight: ""
           }),
         }
       );
