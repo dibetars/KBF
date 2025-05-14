@@ -57,26 +57,46 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
   const [otp, setOtp] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [showVerifyButton, setShowVerifyButton] = useState(false);
-  const [setOtpSubmitted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [displayText, setDisplayText] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+  const [retryTimer, setRetryTimer] = useState(0);
+
+  // Handle retry timer
+  useEffect(() => {
+    let timer;
+    if (retryTimer > 0) {
+      timer = setInterval(() => {
+        setRetryTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [retryTimer]);
 
   const handlePayment = async () => {
     try {
       setIsProcessing(true);
       setError("");
+      setRetryCount(0);
+      setRetryTimer(0);
 
       const paymentData = {
         email: formData.email,
         provider: formData.network,
         phone: formData.phonNumber,
         name: formData.fullName,
-
-        
       };
       const response = await initiatePayment(paymentData);
 
       if (response && response.reference) {
         setPaymentReference(response.reference);
-        setShowOtpInput(true);
+        setDisplayText(response.displayText);
+        
+        if (response.status === 'send_otp') {
+          setShowOtpInput(true);
+        } else if (response.status === 'pay_offline') {
+          setShowVerifyButton(true);
+        }
       } else {
         throw new Error('Invalid payment response: missing reference');
       }
@@ -91,11 +111,12 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
     try {
       setIsProcessing(true);
       setError("");
+      setRetryCount(0);
+      setRetryTimer(0);
 
       const response = await submitOtp(otp, paymentReference);
 
       if (response && response.status) {
-        setOtpSubmitted(true);
         setShowVerifyButton(true);
         setShowOtpInput(false);
       } else {
@@ -103,6 +124,8 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
       }
     } catch (err) {
       setError(err.message || "OTP verification failed. Please try again.");
+      setRetryCount(prev => prev + 1);
+      setRetryTimer(10); // Start 10 second countdown
     } finally {
       setIsProcessing(false);
     }
@@ -150,6 +173,11 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
           <MKTypography variant="body1" mb={2}>
             Amount: GHS 465
           </MKTypography>
+          {displayText && (
+            <MKTypography variant="body1" mb={2} color="info">
+              {displayText}
+            </MKTypography>
+          )}
         </Grid>
 
         {error && (
@@ -166,22 +194,34 @@ function PaymentStep({ formData, onPaymentComplete, onBack }) {
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               fullWidth
-              disabled={isProcessing}
+              disabled={isProcessing || retryTimer > 0}
             />
+            {retryTimer > 0 && (
+              <MKTypography variant="body2" color="text" sx={{ mt: 1, textAlign: 'center' }}>
+                Retrying in {retryTimer} seconds...
+              </MKTypography>
+            )}
             <MKButton
               variant="gradient"
               color="error"
               fullWidth
               onClick={handleOtpSubmit}
-              disabled={isProcessing || !otp}
+              disabled={isProcessing || !otp || retryTimer > 0}
               sx={{ mt: 2 }}
             >
               {isProcessing ? (
                 <CircularProgress size={24} color="inherit" />
+              ) : retryTimer > 0 ? (
+                `Retrying in ${retryTimer}s`
               ) : (
                 "Submit OTP"
               )}
             </MKButton>
+            {retryCount > 0 && (
+              <MKTypography variant="body2" color="text" sx={{ mt: 1, textAlign: 'center' }}>
+                Attempt {retryCount} of 3
+              </MKTypography>
+            )}
           </Grid>
         )}
 
